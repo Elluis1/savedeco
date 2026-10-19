@@ -2,6 +2,18 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-19 — Rendimiento
+
+Medí peso, primer render, memoria y decodificación. El script quedó en `scripts/medir.mjs` (`node --expose-gc scripts/medir.mjs`). Los saves grandes se arman ahí, en memoria.
+
+En la VM de la medición (Xeon de 4 núcleos, 16 GB, Node 22, Chrome 154 headless) la página pesa 97 KB (34 KB gzip), el primer pintado anda en 32 ms y el fixture de Elluis se decodifica en 0,5 ms. Un sintético de 400 KB tarda unos 10 ms. Nada de eso pedía un cambio: el `TextDecoder` del base64 ya estaba desde la pasada de casos hostiles.
+
+Lo que sí se disparaba era abrir la lista de logros. `columns: 2` balancea las columnas y el logro largo de Adolphus (688 caracteres) la llevaba a 172 ms de mediana con el CPU al 4× (muestras 231, 172 y 155). La lista de mejoras, sin ese texto, se quedaba en 34 ms. Saqué las columnas. La misma apertura quedó en 61 ms (104, 60 y 61). A velocidad normal de esta máquina las dos listas ya estaban en ~32 ms y siguen ahí. El peso pasó de 96 698 B a 96 831 B por el comentario del CSS. Los números están en `docs/RENDIMIENTO.md`.
+
+PR: pendiente
+
+Próximos pasos: si un save real se nota, abrir el base64 una sola vez en el camino del botón (hoy `detectar` y `decodificar` lo hacen cada uno; en el de 400 KB son unos 10 ms). Con un segundo lector, cargarlo al decodificar.
+
 ## 2026-10-19 — Revisión del PR 2
 
 Revisión independiente de los casos hostiles del lector de Cookie Clicker. Correcciones chicas en la misma rama:
