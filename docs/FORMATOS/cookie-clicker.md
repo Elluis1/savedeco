@@ -84,7 +84,7 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 25 | `Game.prestige` | Prestigio guardado |
 | 26 | `Game.heavenlyChips` | Pepitas sin gastar. En inglés, heavenly chips |
 | 27 | `Game.heavenlyChipsSpent` | Pepitas gastadas |
-| 28 | `Game.heavenlyCookies` | Campo viejo. Esta versión no lo extrae |
+| 28 | `Game.heavenlyCookies` | Campo viejo. Queda en los datos y en la descarga. El panel no lo muestra |
 | 29 | `Game.ascensionMode` | `0` ninguno, `1` Renacido |
 | 30–34 | `Game.permanentUpgrades` | Cinco ids de mejora. `-1` o vacío es ranura libre |
 | 35 | `Game.dragonLevel` | Índice de etapa. El título de cada etapa no lo mostramos |
@@ -108,9 +108,9 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 53 | `Game.cookiesSent` | Galletas regaladas |
 | 54 | `Game.cookiesReceived` | Galletas recibidas |
 
-Lo que venga después del 54, en una versión más nueva, queda como desconocido y se avisa.
+Lo que venga después del 54, en una versión más nueva, queda como desconocido y se avisa. El número que muestra la descarga es el índice del campo, aunque haya huecos vacíos en el medio.
 
-Los paneles de esta versión muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, terrones, edificios, logros, mejoras, prestigio, pepitas, ascensiones, modo, nivel del dragón, heraldos, el efecto activo y los mods. Si un campo de esta tabla no está en esa lista, queda documentado para no inventarlo después, pero esta versión no lo extrae.
+Los paneles de esta versión muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, terrones, edificios, logros, mejoras, prestigio, pepitas, ascensiones, modo, nivel del dragón, heraldos, el efecto activo y los mods. La descarga agrega, con el mismo número del save, las doradas perdidas, el fondo, la leche, las auras, la ira de las ancianas, las galletas celestiales y el pico de g/s. El resto de esta tabla sigue sin extraerse.
 
 Las horneadas en total no son un campo. El juego las muestra como `cookiesEarned + cookiesReset` (está así en el armado de las estadísticas, alrededor de la línea del texto “Cookies baked (all time)”). Hacemos la misma suma.
 

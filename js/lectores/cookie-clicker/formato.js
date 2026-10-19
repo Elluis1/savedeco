@@ -629,7 +629,12 @@ function decodificarPlano(texto) {
     advertencias.push('El nombre de la panadería es demasiado largo. Muestro solo el principio.');
   }
 
-  if (misc.length > 56) {
+  // El índice es el del campo en la sección (54 es el último con nombre). Un hueco
+  // vacío no corre la numeración: el #56 sigue siendo el #56.
+  const camposDesconocidos = misc.slice(55).flatMap((valor, indice) => (
+    valor === '' ? [] : [{ indice: 55 + indice, valor }]
+  ));
+  if (camposDesconocidos.length > 0) {
     advertencias.push('Hay campos de más al final de las estadísticas. Esta versión del lector no les pone nombre: quedan como desconocidos.');
   }
 
@@ -691,7 +696,7 @@ function decodificarPlano(texto) {
     apariencia,
     efectos,
     mods,
-    camposDesconocidos: misc.slice(55).filter((campo) => campo !== ''),
+    camposDesconocidos,
   };
 
   return {
@@ -867,7 +872,7 @@ function filasMejoras(bits) {
 const NOTAS_COOKIE = [
   'Los nombres de logros, mejoras y edificios salen de la traducción oficial al español. Si un id no está en esa lista, el nombre dice desconocido y conserva el número.',
   'Un logro está conseguido o faltante, según el bit del save.',
-  'Una mejora comprada es la que ya se consiguió. Desbloqueada está disponible y todavía no se compró. Faltante no está desbloqueada.',
+  'En el resumen, Desbloqueadas cuenta el bit de desbloqueada, compres o no. En la tabla, el estado desbloqueada es la que está a la vista y todavía no se compró. Comprada ya se consiguió. Faltante no tiene ese bit.',
   'El catálogo del lector puede tener nombres que este save no guarda, porque se agregaron en una versión posterior. Esos no figuran como faltantes: el bitfield no los trae.',
   'Las opciones del menú (partículas, sonido, pantalla) viajan en el save y este lector no las lista.',
   'El minijuego de cada edificio (jardín, bolsa, panteón, grimorio) viaja en el edificio y este lector no lo interpreta.',
@@ -914,11 +919,11 @@ export function armarExportacion(datos) {
     })),
   ];
 
-  const extras = (datos.camposDesconocidos || []).map((valor, indice) => campo(
-    `Estadística extra #${55 + indice}`,
-    valor,
+  const extras = (datos.camposDesconocidos || []).map((campoExtra) => campo(
+    `Estadística extra #${campoExtra.indice}`,
+    campoExtra.valor,
     'texto',
-    'Campo de más, después del 54. Esta versión del lector no le pone nombre.',
+    'Campo de más, después del 54. El número es el índice en la sección. Esta versión del lector no le pone nombre.',
   ));
 
   return {
@@ -1012,7 +1017,7 @@ export function armarExportacion(datos) {
       {
         id: 'mejoras',
         titulo: 'Mejoras',
-        nota: `Cada id del bitfield. Comprada es conseguida. Desbloqueada está a la vista y sin comprar. Faltante no está desbloqueada.${notaCatalogoMejoras}`,
+        nota: `Cada id del bitfield. En la tabla, comprada es la conseguida y desbloqueada es la que está a la vista y sin comprar. Faltante no tiene el bit de desbloqueada. El resumen cuenta ese bit, compres o no.${notaCatalogoMejoras}`,
         campos: [
           campo('Compradas', datos.mejoras?.compradas, 'entero', 'Las conseguidas.'),
           campo('Desbloqueadas', datos.mejoras?.desbloqueadas, 'entero', 'Incluye las compradas y las que todavía no se compraron.'),

@@ -41,10 +41,10 @@ El armado vive en `js/nucleo/exportar.js`. El núcleo no conoce juegos. Le pide 
 El documento tiene `titulo` (entra en el nombre del archivo), `juego`, `version`, `notas` y `secciones`. Cada sección trae `campos` (texto, entero, número o fecha, con una nota de qué es) y, si hace falta, una `tabla`. El núcleo escribe tres archivos:
 
 - Un `.txt` en Markdown, para pegarlo o adjuntarlo a una IA. Los números grandes van legibles y también exactos.
-- Un `.csv` con BOM UTF-8, separador `;` y salto de línea de Windows, para el Excel en español. Cada sección es un bloque con su encabezado. Un texto que arranca con `=`, `+`, `-` o `@` lleva un apóstrofo para que Excel no lo ejecute.
+- Un `.csv` con BOM UTF-8, separador `;` y salto de línea de Windows, para el Excel en español. Cada sección es un bloque con su encabezado. Un texto que arranca con `=`, `+`, `-` o `@` lleva un apóstrofo para que Excel no lo ejecute, también si antes hay espacios o caracteres invisibles.
 - Un `.json` con los mismos datos. Un número o una fecha es `{ valor, legible, exacto }`.
 
-El nombre del archivo usa el título del lector y el día UTC, sin los caracteres que Windows rechaza (`\ / : * ? " < > |` y los de control). En Cookie Clicker el título es la panadería.
+El nombre del archivo usa el título del lector y el día UTC, sin los caracteres que Windows rechaza (`\ / : * ? " < > |` y los de control) y sin los invisibles que disfrazan la extensión. En Cookie Clicker el título es la panadería.
 
 Un número que no entra en un entero seguro se escribe en notación científica con punto decimal. Es el float del save: el juego no guarda más precisión. El tope de cada archivo es el mismo que el del código de entrada, 4 millones de caracteres. Si se pasa, el archivo se corta y lo dice.
 

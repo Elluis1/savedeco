@@ -2,6 +2,21 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-19 — Revisión del PR 4
+
+Revisión independiente de la descarga. Correcciones chicas en la misma rama:
+
+- Un `|` en el nombre de un mod (el save lo guarda como `[P]`) se escapaba dos veces en la tabla de Markdown y la columna se partía.
+- El CSV no neutralizaba una fórmula si delante tenía espacios, un nulo, un espacio de ancho cero o un salto. Ahora el apóstrofo también cubre ese caso.
+- El nombre del archivo, además de lo que Windows rechaza, deja afuera el ancho cero y las marcas que invierten el texto. Si no, un nombre de panadería podía disfrazar la extensión.
+- Una estadística de más, si venía después de un campo vacío, se numeraba mal. El #56 sigue siendo el #56. Un punto y coma de más, sin valor, no avisa.
+- El JSON de un campo enorme podía pasar el tope de 4 millones. Ahora se achica hasta entrar, y lo avisa.
+- La nota de las mejoras ya no usa "desbloqueada" para dos cosas distintas. El resumen cuenta el bit, compres o no. En la tabla, ese estado es la que está a la vista y sin comprar.
+- Los encabezados del CSV que ve Excel quedaron en español (`valor legible`, `valor exacto`).
+- Los pesos que se habían anotado (89 167 B, 81 171 B y 454 233 B) no coincidían con una medición nueva. La entrada de la exportación quedó con texto 75 257 B, CSV 66 699 B y JSON 197 022 B. Armar los tres tarda unos 28 ms. La página queda en 141 372 B (45 807 B gzip).
+
+PR: https://github.com/Elluis1/savedeco/pull/4
+
 ## 2026-10-19 — Exportar la partida
 
 Luigi pidió poder guardarse toda la estadística, en texto o en Excel, para tenerla o pasársela a una IA. La descarga se arma en el navegador. No se sube nada y no se toca el save.
@@ -16,7 +31,7 @@ Qué quedó:
 - El tope sigue en 4 millones de caracteres. Por encima, el archivo se corta y lo avisa.
 - Los botones están debajo del aviso de partida leída: Texto para una IA, Excel (CSV) y JSON. La bajada usa `Blob` y `URL.createObjectURL`. La CSP no se tocó.
 
-En la partida de Elluis el texto pesa 89 167 B, el CSV 81 171 B y el JSON 454 233 B (643 logros y 875 mejoras, con nombre). Armar los tres entra en la misma corrida de `node --test`, en decenas de milisegundos.
+En la partida de Elluis el texto pesa 75 257 B, el CSV 66 699 B y el JSON 197 022 B (643 logros y 875 mejoras, con nombre). Armar los tres tarda unos 28 ms.
 
 PR: https://github.com/Elluis1/savedeco/pull/4
 

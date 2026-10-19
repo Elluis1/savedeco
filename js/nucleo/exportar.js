@@ -20,11 +20,17 @@ const NOTAS_GENERICAS = [
   'La fecha del nombre del archivo es el día UTC de la exportación.',
   'El CSV separa las columnas con punto y coma, usa el salto de línea de Windows y empieza con una marca BOM para que Excel en español abra los acentos. Cada sección es un bloque con su propio encabezado.',
   'En el CSV, la columna legible es para leerla y la exacta es el número fiel. Si el exacto no entra cómodo en Excel (notación científica, o un entero de más de 15 dígitos), la celda arranca con un apóstrofo para que no lo redondee: el número va después.',
-  'Si un texto arranca con =, +, - o @, el CSV le pone un apóstrofo adelante para que Excel no lo tome como fórmula.',
+  'Si un texto arranca con =, +, - o @, aunque antes haya espacios o caracteres invisibles, el CSV le pone un apóstrofo adelante para que Excel no lo tome como fórmula.',
   'El JSON repite los mismos datos. Un número o una fecha es un objeto con valor, legible y exacto. Un texto queda como texto.',
 ];
 
-const INVALIDOS_WINDOWS = /[<>:"/\\|?*\u0000-\u001f]/g;
+// Lo que Windows no acepta en un nombre, más el DEL.
+const ILEGALES_WINDOWS = /[<>:"/\\|?*\u0000-\u001f\u007f]/g;
+// Ancho cero y marcas que invierten el texto: no rompen el disco, pero
+// disfrazan la extensión. La panadería sale del save, así que se sacan.
+const INVISIBLES_NOMBRE = /[\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
+// Excel ejecuta la fórmula si el primer carácter que le importa es = + - @.
+const PREFIJO_IGNORABLE_CSV = /^[\u0000-\u0020\u007f\u00a0\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]*/;
 
 function esNumerico(tipo) {
   return tipo === 'numero' || tipo === 'entero' || tipo === 'fecha';
@@ -70,9 +76,11 @@ export function describirValor(valor, tipo = 'texto') {
 }
 
 function textoValor(descrito) {
-  const legible = aplanar(descrito.legible);
-  if (!descrito.exacto || descrito.exacto === descrito.legible) return legible;
-  return `${legible} (${descrito.exacto})`;
+  const legible = String(descrito.legible ?? '');
+  const combinado = !descrito.exacto || descrito.exacto === descrito.legible
+    ? legible
+    : `${legible} (${descrito.exacto})`;
+  return aplanar(combinado);
 }
 
 function aplanar(valor) {
@@ -93,7 +101,11 @@ function fechaDocumento(documento) {
 export function nombreArchivo(titulo, extension, fecha) {
   const momento = fecha instanceof Date && !Number.isNaN(fecha.getTime()) ? fecha : new Date();
   const dia = momento.toISOString().slice(0, 10);
-  let base = String(titulo ?? '').replace(INVALIDOS_WINDOWS, ' ').replace(/\s+/g, ' ').trim();
+  let base = String(titulo ?? '')
+    .replace(INVISIBLES_NOMBRE, '')
+    .replace(ILEGALES_WINDOWS, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   base = base.replace(/^[. ]+|[. ]+$/g, '');
   if (base.length > 80) base = base.slice(0, 80).replace(/^[. ]+|[. ]+$/g, '').trim();
   if (!base) base = 'partida';
@@ -103,7 +115,8 @@ export function nombreArchivo(titulo, extension, fecha) {
 
 export function escaparCsv(valor) {
   let texto = String(valor ?? '');
-  if (/^[=+\-@\t\r]/.test(texto)) texto = `'${texto}`;
+  const resto = texto.replace(PREFIJO_IGNORABLE_CSV, '');
+  if (/^[=+\-@]/.test(resto)) texto = `'${texto}`;
   if (/[;"\r\n]/.test(texto)) return `"${texto.replaceAll('"', '""')}"`;
   return texto;
 }
@@ -207,7 +220,7 @@ export function armarTexto(documento, opciones = {}) {
         for (const fila of seccion.tabla.filas || []) {
           const celdas = columnas.map((columna) => {
             const descrito = describirValor(fila?.[columna.id], columna.tipo || 'texto');
-            return aplanar(textoValor(descrito));
+            return textoValor(descrito);
           });
           if (!buffer.agregar(`| ${celdas.join(' | ')} |`)) break;
         }
@@ -221,7 +234,7 @@ export function armarTexto(documento, opciones = {}) {
 
 function bloqueCampos(buffer, titulo, nota, campos) {
   if (!buffer.agregar(filaCsv([titulo, nota || '']))) return;
-  if (!buffer.agregar(filaCsv(['campo', 'valor_legible', 'valor_exacto', 'nota']))) return;
+  if (!buffer.agregar(filaCsv(['campo', 'valor legible', 'valor exacto', 'nota']))) return;
   for (const campo of campos) {
     const descrito = describirValor(campo.valor, campo.tipo || 'texto');
     const exacto = esNumerico(campo.tipo) ? exactoParaExcel(descrito.exacto) : descrito.exacto;
@@ -368,6 +381,20 @@ function vistaJson(documento, recorte) {
   return salida;
 }
 
+function acotarTexto(valor, maximo) {
+  if (typeof valor !== 'string' || valor.length <= maximo) return valor;
+  return valor.slice(0, maximo);
+}
+
+function acotarCampo(campo) {
+  return {
+    ...campo,
+    etiqueta: acotarTexto(campo.etiqueta, 80),
+    valor: acotarTexto(campo.valor, 180),
+    nota: acotarTexto(campo.nota, 180),
+  };
+}
+
 function clonarParaRecorte(documento) {
   return {
     ...documento,
@@ -413,11 +440,28 @@ export function armarJson(documento, opciones = {}) {
     texto = `${JSON.stringify(vistaJson(actual, true), null, 2)}\n`;
   }
   if (texto.length > limite) {
+    actual.notas = (actual.notas || []).map((nota) => acotarTexto(String(nota), 240));
+    actual.titulo = acotarTexto(String(actual.titulo ?? ''), 80);
     for (const seccion of actual.secciones || []) {
-      if (seccion.campos?.length) seccion.campos = seccion.campos.slice(0, 1);
+      if (typeof seccion.titulo === 'string') seccion.titulo = acotarTexto(seccion.titulo, 80);
+      if (typeof seccion.nota === 'string') seccion.nota = acotarTexto(seccion.nota, 180);
+      if (seccion.campos?.length) seccion.campos = [acotarCampo(seccion.campos[0])];
       if (seccion.tabla) seccion.tabla.filas = [];
     }
     texto = `${JSON.stringify(vistaJson(actual, true), null, 2)}\n`;
+  }
+  if (texto.length > limite) {
+    actual.secciones = [];
+    actual.advertencias = [];
+    actual.notas = [AVISO_CORTE];
+    actual.titulo = acotarTexto(String(actual.titulo ?? ''), 40);
+    actual.juego = acotarTexto(String(actual.juego ?? ''), 40);
+    actual.version = acotarTexto(String(actual.version ?? ''), 40);
+    texto = `${JSON.stringify(vistaJson(actual, true), null, 2)}\n`;
+  }
+  if (texto.length > limite) {
+    const minimo = `${JSON.stringify({ recorte: true, nota: AVISO_CORTE })}\n`;
+    return minimo.length <= limite ? minimo : minimo.slice(0, Math.max(0, limite));
   }
   return texto;
 }

@@ -87,6 +87,12 @@ test('escaparCsv cubre punto y coma, comillas, saltos y fórmulas', () => {
   assert.equal(escaparCsv('-1'), "'-1");
   assert.equal(escaparCsv('@suma'), "'@suma");
   assert.equal(escaparCsv('=1;2'), `"'=1;2"`);
+  assert.equal(escaparCsv(' =1+1'), "' =1+1");
+  assert.equal(escaparCsv('  -2+3'), "'  -2+3");
+  assert.equal(escaparCsv('\n=1+1'), '"\'\n=1+1"');
+  assert.equal(escaparCsv('\u0000=1+1'), "'\u0000=1+1");
+  assert.equal(escaparCsv('\u200B=1+1'), "'\u200B=1+1");
+  assert.equal(escaparCsv('\u00A0@suma'), "'\u00A0@suma");
   assert.equal(escaparCsv('Ñoño; "cita"'), '"Ñoño; ""cita"""');
 });
 
@@ -99,9 +105,15 @@ test('el nombre de archivo usa la partida y la fecha, y saca lo que Windows rech
   assert.ok(sucio.endsWith('-2026-10-19.json'));
   assert.equal(nombreArchivo('...', 'txt', AHORA), 'Savedeco-partida-2026-10-19.txt');
   assert.equal(nombreArchivo('   ', 'txt', AHORA), 'Savedeco-partida-2026-10-19.txt');
+  assert.equal(nombreArchivo('\u202Etxt.exe', 'txt', AHORA), 'Savedeco-txt.exe-2026-10-19.txt');
+  assert.equal(nombreArchivo('a\u200Bb', 'txt', AHORA), 'Savedeco-ab-2026-10-19.txt');
+  assert.equal(nombreArchivo('a\u0000b\nc', 'txt', AHORA), 'Savedeco-a b c-2026-10-19.txt');
   const largo = nombreArchivo('x'.repeat(200), 'txt', AHORA);
   assert.ok(largo.length < 120);
-  assert.equal(/[<>:"/\\|?*\u0000-\u001f]/.test(largo), false);
+  assert.equal(/[<>:"/\\|?*\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e]/.test(largo), false);
+  const invertido = nombreArchivo('panadería\u202Etxt.exe', 'csv', AHORA);
+  assert.equal(invertido.includes('\u202E'), false);
+  assert.ok(invertido.endsWith('.csv'));
 });
 
 test('la partida de Elluis arma texto, CSV y JSON', () => {
@@ -404,6 +416,141 @@ test('sin una partida leída no hay archivo', () => {
   assert.equal(armarArchivo({ ok: true, juego: 'x', paneles: [] }, 'pdf'), null);
 });
 
+test('un pipe en el nombre del mod no parte la tabla de Markdown', () => {
+  const misc = [
+    '10', '20', '3', '4', '5', '6', '7', '8', '9',
+    '0', '0', '0', '0', '0', '1', '2', '3', '4', '5', '6', '7', '8', 'christmas',
+  ];
+  const plano = [
+    '2.052',
+    '',
+    '111;222;333;Horno;abcde;1,2,3',
+    '1',
+    misc.join(';'),
+    '4,5,6,1,,0,4;',
+    '11',
+    '1',
+    '',
+    'META:mod[P]raro;',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.equal(resultado.datos.mods.lista[0].nombre, 'mod|raro');
+  const texto = armarArchivo(resultado, 'texto', { ahora: AHORA });
+  const linea = texto.contenido.split('\n').find((fila) => fila.startsWith('|') && fila.includes('raro'));
+  assert.equal(linea, '| mod\\|raro | en la lista |  |  | Figura en META, sin asterisco. |');
+  const csv = armarArchivo(resultado, 'csv', { ahora: AHORA });
+  const filas = parsearCsv(csv.contenido);
+  const mod = filas.find((fila) => fila.includes('mod|raro'));
+  assert.ok(mod);
+  assert.equal(mod.includes('mod|raro'), true);
+});
+
+test('una fórmula con espacios adelante no queda ejecutable en el CSV', () => {
+  const misc = [
+    '10', '20', '3', '4', '5', '6', '7', '8', '9',
+    '0', '0', '0', '0', '0', '1', '2', '3', '4', '5', '6', '7', '8', 'christmas',
+  ];
+  const nombre = ' =1+1';
+  const plano = [
+    '2.052',
+    '',
+    `111;222;333;${nombre};abcde;1,2,3`,
+    '1',
+    misc.join(';'),
+    '4,5,6,1,,0,4;',
+    '11',
+    '1',
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  const filas = parsearCsv(armarArchivo(resultado, 'csv', { ahora: AHORA }).contenido);
+  const partida = filas.find((fila) => fila[0] === 'Partida');
+  assert.equal(partida[1], `'${nombre}`);
+  const encabezado = filas.find((fila) => fila[0] === 'campo');
+  assert.deepEqual(encabezado, ['campo', 'valor legible', 'valor exacto', 'nota']);
+});
+
+test('el campo de más conserva el índice aunque haya un hueco', () => {
+  const misc = [
+    '10', '20', '3', '4', '5', '6', '7', '8', '9',
+    '0', '0', '0', '0', '0', '1', '2', '3', '4', '5', '6', '7', '8', 'christmas',
+  ];
+  while (misc.length < 55) misc.push('0');
+  misc.push('');
+  misc.push('valor-56');
+  misc.push('');
+  misc.push('valor-58');
+  const plano = [
+    '2.052',
+    '',
+    '111;222;333;Horno;abcde;1,2,3',
+    '1',
+    misc.join(';'),
+    '4,5,6,1,,0,4;',
+    '11',
+    '1',
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.ok(resultado.advertencias.some((aviso) => aviso.includes('campos de más')));
+  assert.deepEqual(resultado.datos.camposDesconocidos, [
+    { indice: 56, valor: 'valor-56' },
+    { indice: 58, valor: 'valor-58' },
+  ]);
+  const documento = documentoDe(resultado, { ahora: AHORA });
+  const sinNombre = documento.secciones.find((seccion) => seccion.id === 'sin-nombre');
+  const extras = sinNombre.campos.filter((campo) => campo.etiqueta.startsWith('Estadística extra'));
+  assert.deepEqual(extras.map((campo) => [campo.etiqueta, campo.valor]), [
+    ['Estadística extra #56', 'valor-56'],
+    ['Estadística extra #58', 'valor-58'],
+  ]);
+
+  const conPuntoYComa = misc.slice(0, 55).join(';') + ';';
+  const planoVacio = [
+    '2.052',
+    '',
+    '111;222;333;Horno;abcde;1,2,3',
+    '1',
+    conPuntoYComa,
+    '4,5,6,1,,0,4;',
+    '11',
+    '1',
+    '',
+    '',
+  ].join('|');
+  const vacio = lector.decodificar(envolver(planoVacio));
+  assert.equal(vacio.ok, true, vacio.error);
+  assert.equal(vacio.datos.camposDesconocidos.length, 0);
+  assert.equal(vacio.advertencias.some((aviso) => aviso.includes('campos de más')), false);
+});
+
+test('un campo enorme no deja el JSON por encima del tope', () => {
+  const documento = {
+    juego: 'X',
+    idJuego: 'x',
+    version: '1',
+    titulo: 'T',
+    exportado: AHORA.toISOString(),
+    notas: ['Nota.'],
+    advertencias: [],
+    secciones: [{
+      id: 's',
+      titulo: 'S',
+      nota: 'n',
+      campos: [{ etiqueta: 'Grande', valor: 'Z'.repeat(8000), tipo: 'texto' }],
+    }],
+  };
+  const salida = armarJson(documento, { limite: 2000 });
+  assert.ok(salida.length <= 2000, salida.length);
+  assert.ok(salida.includes('se cortó al llegar al tope'));
+  assert.doesNotThrow(() => JSON.parse(salida));
+});
+
 test('un documento enorme se corta en los tres formatos', () => {
   const documento = {
     juego: 'X',
@@ -439,6 +586,8 @@ test('el núcleo no importa juegos y la página baja con Blob', () => {
   const app = fs.readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
   assert.ok(app.includes('URL.createObjectURL'));
   assert.ok(app.includes('new Blob'));
+  assert.ok(app.includes('estado.textContent'));
+  assert.equal(app.includes('estado.innerHTML'), false);
   assert.equal(/https?:\/\//.test(app), false);
   const csp = fs.readFileSync(new URL('../netlify.toml', import.meta.url), 'utf8');
   assert.ok(csp.includes("script-src 'self'"));
