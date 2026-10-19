@@ -42,6 +42,7 @@ El núcleo no conoce juegos. Cada juego es un lector en `js/lectores/`. Para sum
 
 - [Formato de Cookie Clicker](docs/FORMATOS/cookie-clicker.md)
 - [Próximos juegos](docs/ROADMAP.md)
+- [Rendimiento](docs/RENDIMIENTO.md)
 - [Bitácora](docs/BITACORA.md)
 
 ## Publicar

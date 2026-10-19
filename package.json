@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Lector de códigos de exportación. Solo lectura, estático, sin dependencias.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "medir": "node --expose-gc scripts/medir.mjs"
   }
 }
