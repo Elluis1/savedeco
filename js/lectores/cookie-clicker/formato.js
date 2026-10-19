@@ -600,10 +600,10 @@ function decodificarPlano(texto) {
   const desbloqueadas = nombresActivos(bitsMejoras, mejoras, 2, 0);
   const logrosLeidos = nombresActivos(bitsLogros, logros, 1, 0);
   if (compradas.recortado || desbloqueadas.recortado) {
-    advertencias.push(`Hay demasiadas mejoras para listarlas todas. Muestro los primeros ${MAX_NOMBRES_LISTA} nombres; el conteo sigue siendo el total.`);
+    advertencias.push(`Hay demasiadas mejoras para listarlas todas en la página. En pantalla van los primeros ${MAX_NOMBRES_LISTA} nombres; el conteo sigue siendo el total. La descarga trae la lista completa.`);
   }
   if (logrosLeidos.recortado) {
-    advertencias.push(`Hay demasiados logros para listarles el nombre. Muestro los primeros ${MAX_NOMBRES_LISTA}; el conteo sigue siendo el total.`);
+    advertencias.push(`Hay demasiados logros para listarles el nombre en la página. En pantalla van los primeros ${MAX_NOMBRES_LISTA}; el conteo sigue siendo el total. La descarga trae la lista completa.`);
   }
 
   const permanentes = [30, 31, 32, 33, 34].map((indice, ranura) => {
@@ -629,7 +629,12 @@ function decodificarPlano(texto) {
     advertencias.push('El nombre de la panadería es demasiado largo. Muestro solo el principio.');
   }
 
-  if (misc.length > 56) {
+  // El índice es el del campo en la sección (54 es el último con nombre). Un hueco
+  // vacío no corre la numeración: el #56 sigue siendo el #56.
+  const camposDesconocidos = misc.slice(55).flatMap((valor, indice) => (
+    valor === '' ? [] : [{ indice: 55 + indice, valor }]
+  ));
+  if (camposDesconocidos.length > 0) {
     advertencias.push('Hay campos de más al final de las estadísticas. Esta versión del lector no les pone nombre: quedan como desconocidos.');
   }
 
@@ -669,11 +674,15 @@ function decodificarPlano(texto) {
       desbloqueadas: desbloqueadas.activos,
       total: compradas.total,
       nombresCompradas: compradas.nombres,
+      // La descarga lista compradas, desbloqueadas y faltantes con estos bits.
+      // Los paneles siguen usando solo los nombres conseguidos, con tope.
+      bits: bitsMejoras,
     },
     logros: {
       obtenidos: logrosLeidos.activos,
       total: logrosLeidos.total,
       nombres: logrosLeidos.nombres,
+      bits: bitsLogros,
     },
     mejorasPermanentes: permanentes,
     nivelDragon: numero(misc[35], true),
@@ -687,7 +696,7 @@ function decodificarPlano(texto) {
     apariencia,
     efectos,
     mods,
-    camposDesconocidos: misc.slice(55).filter((campo) => campo !== ''),
+    camposDesconocidos,
   };
 
   return {
@@ -817,4 +826,310 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
   };
 
   return [resumen, panelEdificios, panelProgreso, panelPrestigio, panelMods];
+}
+
+function campo(etiqueta, valor, tipo, nota) {
+  const item = { etiqueta, valor, tipo };
+  if (nota) item.nota = nota;
+  return item;
+}
+
+function filasLogros(bits) {
+  const filas = [];
+  const tira = bits || '';
+  for (let i = 0; i < tira.length; i += 1) {
+    const conseguido = tira[i] === '1';
+    filas.push({
+      id: i,
+      nombre: logros[i] || `Logro desconocido #${i}`,
+      estado: conseguido ? 'conseguido' : 'faltante',
+    });
+  }
+  return filas;
+}
+
+function filasMejoras(bits) {
+  const tira = bits || '';
+  const pares = Math.floor(tira.length / 2);
+  const filas = [];
+  for (let i = 0; i < pares; i += 1) {
+    const desbloqueada = tira[i * 2] === '1';
+    const comprada = tira[i * 2 + 1] === '1';
+    let estado = 'faltante';
+    if (comprada) estado = 'comprada';
+    else if (desbloqueada) estado = 'desbloqueada';
+    filas.push({
+      id: i,
+      nombre: mejoras[i] || `Mejora desconocida #${i}`,
+      estado,
+      desbloqueada: desbloqueada ? 'sí' : 'no',
+      comprada: comprada ? 'sí' : 'no',
+    });
+  }
+  return filas;
+}
+
+const NOTAS_COOKIE = [
+  'Los nombres de logros, mejoras y edificios salen de la traducción oficial al español. Si un id no está en esa lista, el nombre dice desconocido y conserva el número.',
+  'Un logro está conseguido o faltante, según el bit del save.',
+  'En el resumen, Desbloqueadas cuenta el bit de desbloqueada, compres o no. En la tabla, el estado desbloqueada es la que está a la vista y todavía no se compró. Comprada ya se consiguió. Faltante no tiene ese bit.',
+  'El catálogo del lector puede tener nombres que este save no guarda, porque se agregaron en una versión posterior. Esos no figuran como faltantes: el bitfield no los trae.',
+  'Las opciones del menú (partículas, sonido, pantalla) viajan en el save y este lector no las lista.',
+  'El minijuego de cada edificio (jardín, bolsa, panteón, grimorio) viaja en el edificio y este lector no lo interpreta.',
+  'El fondo, el tipo de leche y las auras del dragón son ids numéricos. El nombre del sprite no está en el save.',
+  'El nivel del dragón es el índice de etapa. El título de cada etapa no está en el save.',
+  'La apariencia de Tú son índices de genes. El nombre visual de cada opción no está en el save.',
+  'La bóveda (mejoras escondidas) viaja como una lista de ids y este lector no la despliega.',
+  'Lo que venga después del campo de estadísticas 54 queda en Ids y campos sin nombre, con el texto crudo.',
+  'El prestigio que se muestra es el guardado. Al importar, el juego lo vuelve a calcular con las galletas entregadas, así que puede diferir del número de acá.',
+  'Las horneadas en total son la suma de las de esta ascensión y las entregadas al ascender. El juego las muestra así. No es un campo propio del save.',
+];
+
+export function armarExportacion(datos) {
+  const temporada = datos.temporada || {};
+  const filasDeLogros = filasLogros(datos.logros?.bits);
+  const filasDeMejoras = filasMejoras(datos.mejoras?.bits);
+  const faltanLogros = filasDeLogros.filter((fila) => fila.estado === 'faltante').length;
+  const mejorasFaltantes = filasDeMejoras.filter((fila) => fila.estado === 'faltante').length;
+  const notaCatalogoLogros = logros.length > filasDeLogros.length
+    ? ` El catálogo tiene ${logros.length} nombres y el save trae ${filasDeLogros.length}. Los que no vienen en el bitfield no se listan como faltantes.`
+    : '';
+  const notaCatalogoMejoras = mejoras.length > filasDeMejoras.length
+    ? ` El catálogo tiene ${mejoras.length} nombres y el save trae ${filasDeMejoras.length}. Los que no vienen en el bitfield no se listan como faltantes.`
+    : '';
+
+  const filasMods = [
+    ...(datos.mods?.lista || []).map((mod) => ({
+      nombre: mod.nombre,
+      marca: mod.asterisco ? 'con asterisco' : 'en la lista',
+      detalle: mod.asterisco
+        ? 'Figura con * en META. Los tres mods de ejemplo oficiales, que el juego trae desactivados, se guardan así.'
+        : 'Figura en META, sin asterisco.',
+      version: '',
+      caracteres: '',
+    })),
+    ...(datos.mods?.datos || []).map((mod) => ({
+      nombre: mod.id,
+      marca: 'datos propios',
+      detalle: mod.jsonOmitido
+        ? 'El bloque era demasiado grande o demasiado anidado. Se contó y no se interpretó.'
+        : 'Datos propios del mod. Solo se lee la versión si el JSON trae lastVersion.',
+      version: mod.version || '',
+      caracteres: mod.caracteres,
+    })),
+  ];
+
+  const extras = (datos.camposDesconocidos || []).map((campoExtra) => campo(
+    `Estadística extra #${campoExtra.indice}`,
+    campoExtra.valor,
+    'texto',
+    'Campo de más, después del 54. El número es el índice en la sección. Esta versión del lector no le pone nombre.',
+  ));
+
+  return {
+    titulo: datos.nombre || 'partida',
+    juego: 'Cookie Clicker',
+    version: datos.version,
+    notas: NOTAS_COOKIE,
+    secciones: [
+      {
+        id: 'resumen',
+        titulo: 'Resumen',
+        nota: 'Cifras de la partida al momento de guardar. Salen del código tal como se escribió: no se recalculan contra el juego.',
+        campos: [
+          campo('Panadería', datos.nombre, 'texto', 'Nombre guardado de la panadería.'),
+          campo('Versión', datos.version, 'texto', 'Game.version, la del save.'),
+          campo('Semilla', datos.semilla, 'texto', 'Semilla del azar de esta partida.'),
+          campo('Arranque de la partida', datos.fechas?.inicioPartida, 'fecha', 'Cuándo empezó la partida, todas las ascensiones juntas.'),
+          campo('Arranque de esta ascensión', datos.fechas?.inicioAscension, 'fecha', 'Cuándo empezó la ascensión que está guardada.'),
+          campo('Último guardado', datos.fechas?.ultimoGuardado, 'fecha', 'Cuándo se escribió este save.'),
+          campo('Galletas en el banco', datos.galletas, 'numero', 'Las que había en el banco al guardar.'),
+          campo('Horneadas esta ascensión', datos.galletasHorneadasAscension, 'numero', 'Galletas horneadas desde la última ascensión.'),
+          campo('Entregadas al ascender', datos.galletasEntregadas, 'numero', 'Las que se entregaron en ascensiones anteriores.'),
+          campo('Horneadas en total', datos.galletasHorneadasTotal, 'numero', 'Esta ascensión más las entregadas. Es la suma que muestra el juego.'),
+          campo('Clics en la galleta', datos.clics, 'entero', 'En esta ascensión.'),
+          campo('Galletas hechas a mano', datos.galletasHechasAMano, 'numero'),
+          campo('Galletas doradas', datos.galletasDoradas, 'entero', 'En total, todas las ascensiones.'),
+          campo('Galletas doradas esta ascensión', datos.galletasDoradasAscension, 'entero'),
+          campo('Galletas doradas perdidas', datos.galletasDoradasPerdidas, 'entero', 'Clics de doradas que se escaparon. El panel no lo destaca.'),
+          campo('Temporada', temporada.nombre, 'texto', temporada.id ? `Id guardado: ${temporada.id}.` : 'No había una temporada forzada.'),
+          campo('Tiempo de temporada', temporada.fotogramas, 'entero', 'Fotogramas que quedaban, a 30 por segundo.'),
+          campo('Tiempo de temporada, legible', formatearFotogramas(temporada.fotogramas), 'texto', 'Los mismos fotogramas, pasados a tiempo.'),
+          campo('Veces que se cambió la temporada', temporada.usos, 'entero', 'Usos del cambiador de temporada.'),
+          campo('Terrones de azúcar', datos.terrones, 'entero', 'Los que había en el banco. -1 si todavía no se desbloquean.'),
+          campo('Terrones cosechados', datos.terronesTotales, 'entero'),
+          campo('Terrón en curso', datos.tipoTerron?.nombre, 'texto', `Id ${datos.tipoTerron?.id ?? ''}.`),
+          campo('Edificios en total', datos.edificiosTotal, 'entero', 'La suma de las cantidades de cada edificio.'),
+          campo('Mayor g/s crudo de esta ascensión', datos.cpsMaximo, 'numero', 'El pico de galletas por segundo que guardó el juego, sin reformatear.'),
+          campo('Ira de las ancianas', datos.iraAnciana, 'entero', 'De 0 a 3.'),
+          campo('Galletas celestiales', datos.galletasCelestiales, 'numero', 'Campo viejo del save (heavenlyCookies). El panel no lo muestra.'),
+          campo('Efectos activos al guardar', datos.efectos?.length || 0, 'entero', 'El detalle está en la sección Efectos.'),
+        ],
+      },
+      {
+        id: 'edificios',
+        titulo: 'Edificios',
+        nota: 'Uno por fila, en el orden del juego. Cantidad es cuántos hay ahora. Comprados incluye los que se vendieron. Máximo es el pico de esta ascensión. Nivel es el de las mejoras de edificio. Galletas producidas es lo que ese edificio horneó, según el save. El minijuego no se interpreta.',
+        tabla: {
+          columnas: [
+            { id: 'indice', etiqueta: 'Id', tipo: 'entero' },
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+            { id: 'ingles', etiqueta: 'Nombre en inglés', tipo: 'texto' },
+            { id: 'cantidad', etiqueta: 'Cantidad', tipo: 'entero' },
+            { id: 'comprados', etiqueta: 'Comprados', tipo: 'entero' },
+            { id: 'nivel', etiqueta: 'Nivel', tipo: 'entero' },
+            { id: 'maximo', etiqueta: 'Máximo', tipo: 'entero' },
+            { id: 'silenciado', etiqueta: 'Silenciado', tipo: 'texto' },
+            { id: 'galletas', etiqueta: 'Galletas producidas', tipo: 'numero' },
+          ],
+          filas: (datos.edificios || []).map((edificio) => ({
+            indice: edificio.indice,
+            nombre: edificio.nombre,
+            ingles: edificio.nombreIngles || '',
+            cantidad: edificio.cantidad,
+            comprados: edificio.comprados,
+            nivel: edificio.nivel,
+            maximo: edificio.maximo,
+            silenciado: edificio.silenciado ? 'sí' : 'no',
+            galletas: edificio.galletasProducidas,
+          })),
+        },
+      },
+      {
+        id: 'logros',
+        titulo: 'Logros',
+        nota: `Cada id del bitfield, conseguido o faltante, con nombre.${notaCatalogoLogros}`,
+        campos: [
+          campo('Conseguidos', datos.logros?.obtenidos, 'entero'),
+          campo('Faltantes', faltanLogros, 'entero'),
+          campo('Total en el save', datos.logros?.total, 'entero', 'Largo del bitfield de logros.'),
+          campo('Nombres en el catálogo del lector', logros.length, 'entero'),
+        ],
+        tabla: {
+          columnas: [
+            { id: 'id', etiqueta: 'Id', tipo: 'entero' },
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+            { id: 'estado', etiqueta: 'Estado', tipo: 'texto' },
+          ],
+          filas: filasDeLogros,
+        },
+      },
+      {
+        id: 'mejoras',
+        titulo: 'Mejoras',
+        nota: `Cada id del bitfield. En la tabla, comprada es la conseguida y desbloqueada es la que está a la vista y sin comprar. Faltante no tiene el bit de desbloqueada. El resumen cuenta ese bit, compres o no.${notaCatalogoMejoras}`,
+        campos: [
+          campo('Compradas', datos.mejoras?.compradas, 'entero', 'Las conseguidas.'),
+          campo('Desbloqueadas', datos.mejoras?.desbloqueadas, 'entero', 'Incluye las compradas y las que todavía no se compraron.'),
+          campo('Faltantes', mejorasFaltantes, 'entero', 'Ni desbloqueadas ni compradas.'),
+          campo('Total en el save', datos.mejoras?.total, 'entero', 'Cantidad de pares del bitfield.'),
+          campo('Nombres en el catálogo del lector', mejoras.length, 'entero'),
+        ],
+        tabla: {
+          columnas: [
+            { id: 'id', etiqueta: 'Id', tipo: 'entero' },
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+            { id: 'estado', etiqueta: 'Estado', tipo: 'texto' },
+            { id: 'desbloqueada', etiqueta: 'Desbloqueada', tipo: 'texto' },
+            { id: 'comprada', etiqueta: 'Comprada', tipo: 'texto' },
+          ],
+          filas: filasDeMejoras,
+        },
+      },
+      {
+        id: 'prestigio',
+        titulo: 'Prestigio y ascensión',
+        nota: 'Prestigio y pepitas son los valores guardados. Al importar, el juego vuelve a calcular el prestigio a partir de las galletas entregadas.',
+        campos: [
+          campo('Prestigio', datos.prestigio, 'numero'),
+          campo('Pepitas celestiales', datos.chipsCelestiales, 'numero', 'Las que hay sin gastar. En inglés, heavenly chips.'),
+          campo('Pepitas gastadas', datos.chipsCelestialesGastados, 'numero'),
+          campo('Galletas celestiales', datos.galletasCelestiales, 'numero', 'Campo viejo. Queda por si el save lo trae.'),
+          campo('Ascensiones', datos.ascensiones, 'entero'),
+          campo('Modo de la ascensión', datos.modoAscension?.nombre, 'texto', `Id ${datos.modoAscension?.id ?? ''}.`),
+          campo('Nivel del dragón', datos.nivelDragon, 'entero', 'Índice de etapa. El título de la etapa no está en el save.'),
+          campo('Heraldos al guardar', datos.heraldos, 'entero', 'Al cargar, el juego pone los heraldos de ahora, no estos.'),
+        ],
+        tabla: {
+          columnas: [
+            { id: 'ranura', etiqueta: 'Ranura', tipo: 'entero' },
+            { id: 'id', etiqueta: 'Id de mejora', tipo: 'entero' },
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+          ],
+          filas: (datos.mejorasPermanentes || []).map((ranura) => ({
+            ranura: ranura.ranura,
+            id: ranura.id,
+            nombre: ranura.nombre,
+          })),
+        },
+      },
+      {
+        id: 'efectos',
+        titulo: 'Efectos al guardar',
+        nota: 'Buffs que estaban activos cuando se guardó. El tiempo está en fotogramas, a 30 por segundo. Si el nombre quedó en inglés, es el del fuente: no hay una entrada suelta en la traducción.',
+        campos: [
+          campo('Cantidad', datos.efectos?.length || 0, 'entero'),
+        ],
+        tabla: {
+          columnas: [
+            { id: 'id', etiqueta: 'Id', tipo: 'entero' },
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+            { id: 'tiempo', etiqueta: 'Tiempo restante', tipo: 'texto' },
+            { id: 'fotogramas', etiqueta: 'Fotogramas restantes', tipo: 'entero' },
+            { id: 'fotogramasMaximos', etiqueta: 'Fotogramas máximos', tipo: 'entero' },
+            { id: 'argumento', etiqueta: 'Argumento', tipo: 'numero' },
+          ],
+          filas: (datos.efectos || []).map((efecto) => ({
+            id: efecto.id,
+            nombre: efecto.nombre,
+            tiempo: formatearFotogramas(efecto.fotogramas),
+            fotogramas: efecto.fotogramas,
+            fotogramasMaximos: efecto.fotogramasMaximos,
+            argumento: efecto.argumento,
+          })),
+        },
+      },
+      {
+        id: 'mods',
+        titulo: 'Mods',
+        nota: 'META es la lista que agrega la versión de Steam. El asterisco no está explicado en el main.js público de la web: lo leemos como la marca de los mods de ejemplo que vienen apagados. De los datos propios solo se toma la versión, si el JSON trae lastVersion.',
+        campos: [
+          campo('En la lista', datos.mods?.lista?.length || 0, 'entero'),
+          campo('Con datos propios', datos.mods?.datos?.length || 0, 'entero'),
+        ],
+        tabla: {
+          columnas: [
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+            { id: 'marca', etiqueta: 'Marca', tipo: 'texto' },
+            { id: 'version', etiqueta: 'Versión', tipo: 'texto' },
+            { id: 'caracteres', etiqueta: 'Caracteres de datos', tipo: 'entero' },
+            { id: 'detalle', etiqueta: 'Detalle', tipo: 'texto' },
+          ],
+          filas: filasMods,
+        },
+      },
+      {
+        id: 'sin-nombre',
+        titulo: 'Ids y campos sin nombre',
+        nota: 'Estos valores están en el save. El lector no les asigna un nombre visual: un nombre inventado cerraría peor que el id.',
+        campos: [
+          campo('Fondo', datos.fondoId, 'entero', 'Id de sprite. El dibujo no está mapeado.'),
+          campo('Leche', datos.lecheId, 'entero', 'Id de tipo de leche. El dibujo no está mapeado.'),
+          campo('Aura del dragón', datos.auraDragon, 'entero', 'Id de aura. El nombre no está mapeado.'),
+          campo('Segunda aura del dragón', datos.auraDragon2, 'entero', 'Id de la segunda aura. El nombre no está mapeado.'),
+          ...extras,
+        ],
+        tabla: {
+          columnas: [
+            { id: 'gen', etiqueta: 'Gen de Tú', tipo: 'texto' },
+            { id: 'indice', etiqueta: 'Índice', tipo: 'entero' },
+          ],
+          filas: (datos.apariencia || []).map((gen) => ({
+            gen: gen.id,
+            indice: gen.indice,
+          })),
+        },
+      },
+    ],
+  };
 }

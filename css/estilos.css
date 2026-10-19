@@ -247,6 +247,11 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
 .pie { padding: 0 0 2rem; font-size: 0.92rem; }
 .pie a { color: var(--acento); }
 
+.exportar .nota { margin-bottom: 0.2rem; }
+.exportar .acciones { margin-top: 0.35rem; }
+.estado-exportar { margin: 0.7rem 0 0; color: var(--ok); font-size: 0.92rem; }
+.estado-exportar:empty { display: none; }
+
 @media (max-width: 720px) {
   .fila-controles, .fila-barra-texto { align-items: flex-start; flex-direction: column; }
   .notacion, .notacion select { width: 100%; }

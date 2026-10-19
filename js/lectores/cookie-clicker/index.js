@@ -1,4 +1,4 @@
-import { armarPaneles, decodificar, detectar } from './formato.js';
+import { armarExportacion, armarPaneles, decodificar, detectar } from './formato.js';
 
 export const lector = {
   id: 'cookie-clicker',
@@ -13,4 +13,5 @@ export const lector = {
   detectar,
   decodificar,
   armarPaneles,
+  armarExportacion,
 };
