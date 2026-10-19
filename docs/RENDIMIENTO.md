@@ -73,7 +73,7 @@ La diferencia está en el ruido de la medición. Esta pasada no tocó el decodif
 
 ## Qué se cambió
 
-La lista de nombres de logros y mejoras usaba `columns: 2`. El navegador balancea la altura de las dos columnas. En la partida de Elluis hay 523 logros, y uno (el de Adolphus W. Green) es un párrafo de 688 caracteres en el puesto 216. Con el CPU a 4×, abrir esa lista tardaba **172 ms** de mediana (muestras 231, 172 y 155). La de mejoras, 717 nombres y ninguno tan largo, tardaba **34 ms**.
+La lista de nombres de logros y mejoras usaba `columns: 2`. El navegador balancea la altura de las dos columnas. En la partida de Elluis hay 523 logros, y uno (el de Adolphus W. Green) es un párrafo de 688 caracteres en el puesto 217 (el índice de la lista, que arranca en cero, es 216). Con el CPU a 4×, abrir esa lista tardaba **172 ms** de mediana (muestras 231, 172 y 155). La de mejoras, 717 nombres y ninguno tan largo, tardaba **34 ms**.
 
 Quedó en una sola columna, con el mismo alto máximo y el mismo filtro. Abrir los logros pasó a **61 ms** de mediana (muestras 104, 60 y 61). Las mejoras quedaron en **21 ms**. A velocidad normal de esta VM las dos listas ya estaban en ~32 ms, pegadas a un par de frames, y siguen ahí: el costo solo se ve cuando el CPU es más lento.
 

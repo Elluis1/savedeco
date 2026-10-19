@@ -2,6 +2,16 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-19 — Revisión del PR 3
+
+Revisión independiente de la medición y de la lista en una columna. Correcciones chicas en la misma rama:
+
+- El párrafo de Adolphus está en el puesto 217 de los 523 logros. El índice de la lista es 216; la nota de rendimiento decía 216.
+- Quedó un test que lee el CSS y no deja volver a poner `columns` en `.lista-nombres ul`. El alto máximo sigue en 16rem.
+- `scripts/medir.mjs` resuelve la carpeta del repo con `fileURLToPath`. Con el `pathname` pelado, en Windows la ruta salía mal y la medición ni arrancaba.
+
+PR: https://github.com/Elluis1/savedeco/pull/3
+
 ## 2026-10-19 — Rendimiento
 
 Medí peso, primer render, memoria y decodificación. El script quedó en `scripts/medir.mjs` (`node --expose-gc scripts/medir.mjs`). Los saves grandes se arman ahí, en memoria.

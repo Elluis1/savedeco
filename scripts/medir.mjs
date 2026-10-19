@@ -12,10 +12,10 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-const raiz = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXTENSIONES_IMAGEN = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico']);
 
 function mediana(valores) {
