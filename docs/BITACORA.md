@@ -18,7 +18,7 @@ Qué quedó:
 
 En la partida de Elluis el texto pesa 89 167 B, el CSV 81 171 B y el JSON 454 233 B (643 logros y 875 mejoras, con nombre). Armar los tres entra en la misma corrida de `node --test`, en decenas de milisegundos.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/4
 
 Próximos pasos: los de antes (minijuegos, auras y fondos con nombre, un segundo lector). La exportación ya la hereda el que venga.
 
