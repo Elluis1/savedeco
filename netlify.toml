@@ -1,0 +1,4 @@
+# Sitio estático. No hay comando de build: se publica la raíz tal cual.
+[build]
+  publish = "."
+  command = ""
