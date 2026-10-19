@@ -1,0 +1,12 @@
+# Sitio estático. No hay comando de build: se publica la raíz tal cual.
+[build]
+  publish = "."
+  command = ""
+
+# Las barras usan style="" para el ancho. No hay scripts inline ni requests afuera.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"

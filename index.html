@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Savedeco lee códigos de exportación de partidas y muestra cómo venían. Solo lectura: el código no sale de tu máquina.">
+  <title>Savedeco</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="envoltorio encabezado-interno">
+      <p class="marca">Savedeco</p>
+      <h1>Mirá tu partida, sin tocarla.</h1>
+      <p class="bajada">Pegá el código de exportación o subí el archivo. Te armamos paneles con lo que la partida tenía guardado. Solo lectura: no editamos ni generamos saves.</p>
+    </div>
+  </header>
+
+  <main class="envoltorio">
+    <p class="aviso-privacidad">Todo pasa en tu navegador. El código que pegás no sale de esta máquina: no hay servidor de por medio y no lo guardamos en ningún lado.</p>
+
+    <form id="formulario" class="lector" method="post" action="#">
+      <div class="fila-controles">
+        <label class="campo-grande" for="codigo">Código de exportación</label>
+        <label class="notacion" for="notacion">
+          Números grandes
+          <select id="notacion">
+            <option value="corta">Notación corta</option>
+            <option value="cientifica">Científica</option>
+          </select>
+        </label>
+      </div>
+      <textarea id="codigo" rows="8" spellcheck="false" autocomplete="off" placeholder="Pegá acá el código, o subí el archivo .txt de la partida."></textarea>
+      <div class="acciones">
+        <label class="boton boton-secundario">
+          Subir archivo
+          <input id="archivo" type="file" accept=".txt,text/plain">
+        </label>
+        <button class="boton boton-principal" type="submit">Decodificar</button>
+      </div>
+      <p class="ayuda">Por ahora leemos <span id="juegos">Cookie Clicker</span>. Si el código viene con <code>%21END%21</code> o con saltos de línea, también sirve.</p>
+    </form>
+
+    <div id="resultado" class="resultado" aria-live="polite"></div>
+  </main>
+
+  <footer class="pie">
+    <div class="envoltorio">
+      <p>Savedeco es un visor. La partida sigue siendo tuya.</p>
+      <p><a href="https://github.com/Elluis1/savedeco">Código en GitHub</a></p>
+    </div>
+  </footer>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
