@@ -8,7 +8,7 @@ Los nombres en español salen de la localización oficial, `http://orteil.dashne
 
 1. `WriteSave(1)` hace `escape(utf8_to_b64(plano) + '!END!')`. Por eso a veces ves `%3D` y `%21END%21` en vez de `==!END!`.
 2. Sacamos el escape de URL (también `%uXXXX`, que es lo que produce `escape` con caracteres no ASCII).
-3. Ignoramos espacios y saltos de línea pegados al copiar.
+3. Ignoramos espacios, saltos de línea y espacios de ancho cero pegados al copiar, y los sacamos antes de decodificar el escape de URL. Así un `%2B` o un `!END!` partido por el pegado sigue siendo el cierre o el relleno, no un código dañado.
 4. Cortamos en `!END!`. Si no está, igual intentamos leer y dejamos una advertencia.
 5. Decodificamos Base64 a UTF-8 con el mismo camino que `b64_to_utf8` del juego.
 
@@ -99,7 +99,7 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 44 | `Game.lumpT` | Cuándo empezó a formarse el terrón actual, en ms |
 | 45 | `Game.lumpRefill` | Última vez que un terrón rellenó un minijuego, en ms |
 | 46 | `Game.lumpCurrentType` | Ver tipos más abajo |
-| 47 | `Game.vault` | Ids de mejoras en la bóveda, separados por coma |
+| 47 | `Game.vault` | Ids de mejoras en la bóveda, separados por coma. `WriteSave` hace `Game.vault.join(',')`. Las 876 mejoras de la loc, si estuvieran todas, arman unos 3.400 caracteres. |
 | 48 | `Game.heralds` | Heraldos al momento de guardar. Al cargar, el juego pone los de ahora |
 | 49 | `Game.fortuneGC` | Si se clickeó la fortuna de galleta dorada esta ascensión |
 | 50 | `Game.fortuneCPS` | Si se clickeó la fortuna de g/s |
@@ -215,7 +215,8 @@ Si el texto no se puede abrir, la página muestra un aviso y sigue. No hay stack
 
 - Más de 4 millones de caracteres se rechaza antes de decodificar. Justo en el tope se intenta leer; un carácter más, no.
 - Base64 inválido, binario, UTF-16 o el export de otro juego: error amable. Sin `!END!` y sin la forma de una partida (versión, estadísticas y un edificio), este lector ni siquiera se elige.
-- En el sobre se ignoran espacios, saltos de línea y espacios de ancho cero, que se cuelan al copiar. Un `!END!` partido por un salto cuenta como cierre.
-- Una sección muy por encima de una partida real (decenas de miles de edificios, un bitfield enorme, cientos de miles de `|`) no se expande: se rechaza con un aviso. El JSON de un mod demasiado grande o demasiado anidado se cuenta y no se interpreta.
+- En el sobre se ignoran espacios, saltos de línea y espacios de ancho cero, que se cuelan al copiar, incluso si parten un `%XX`. Un `!END!` partido por un salto cuenta como cierre.
+- Una sección muy por encima de una partida 2.053 no se expande: se rechaza con un aviso. La de referencia tiene 20 edificios, 1.750 bits de mejoras y 643 de logros. Los topes son 80 edificios, 20.000 bits, 80 efectos, 200 mods y 30 `|`. El JSON de un mod de más de 100.000 caracteres, o anidado a más de 40 niveles, se cuenta y no se interpreta.
+- Un campo numérico de las estadísticas con más de 100 caracteres se muestra en cero y se avisa. La bóveda y el id de temporada no entran en esa cuenta.
 - Una fecha fuera del rango de `Date` se muestra como desconocida, con aviso. El resto de la partida sigue.
 - Una versión mayor a 2.053 se lee con las reglas actuales y se avisa: el formato puede haber corrido un campo.

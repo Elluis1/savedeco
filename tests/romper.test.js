@@ -201,7 +201,8 @@ test('una sección enorme no se expande ni cuelga', { timeout: 30_000 }, () => {
     const { valor, ms } = medir(() => decodificarAutomatico(entrada));
     assert.ok(ms < 10_000, `${nombre} tardó ${ms.toFixed(0)} ms`);
     assert.equal(valor.ok, false, nombre);
-    assert.ok(valor.error === MENSAJE_ENORME || valor.error === MENSAJE_DANADO, `${nombre}: ${valor.error}`);
+    const esperado = nombre === 'pipes' ? MENSAJE_DANADO : MENSAJE_ENORME;
+    assert.equal(valor.error, esperado, nombre);
     assert.equal(valor.datos, undefined, nombre);
   }
 });
@@ -384,6 +385,79 @@ test('un número de estadísticas interminable avisa y queda en cero', () => {
   assert.equal(resultado.ok, true, resultado.error);
   assert.equal(resultado.datos.galletas, 0);
   assert.ok(resultado.advertencias.some((aviso) => aviso.includes('demasiado largo')));
+});
+
+test('la bóveda, aunque liste todas las mejoras, no se lee como número roto', () => {
+  // La loc tiene 876 mejoras (ids 0 a 875). WriteSave las junta con coma.
+  const boveda = Array.from({ length: 876 }, (_, id) => String(id)).join(',');
+  assert.ok(boveda.length > 3_000, boveda.length);
+  const misc = Array.from({ length: 55 }, () => '1');
+  misc[0] = '4.615326035923986e+56';
+  misc[1] = '20';
+  misc[8] = '10';
+  misc[22] = 'halloween';
+  misc[29] = '0';
+  misc[46] = '0';
+  misc[47] = boveda;
+  const resultado = decodificarAutomatico(partida({ misc }));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.equal(resultado.datos.galletas, 4.615326035923986e+56);
+  assert.equal(resultado.datos.temporada.nombre, 'Halloween');
+  assert.equal(resultado.datos.modoAscension.nombre, 'Ninguno');
+  assert.equal(resultado.advertencias.some((aviso) => aviso.includes('demasiado largo')), false);
+});
+
+test('un %XX partido por salto o ancho cero sigue siendo la partida', () => {
+  const plano = '2.053||111;222;333;Panadería;seed;0|1|10;20|1,1,1,1|11|1||';
+  const escapado = escapeComoElJuego(`${Buffer.from(plano, 'utf8').toString('base64')}!END!`);
+  const indice = escapado.indexOf('%');
+  assert.ok(indice >= 0);
+  const partido = [
+    `${escapado.slice(0, indice + 2)}\u200b${escapado.slice(indice + 2)}`,
+    `${escapado.slice(0, indice + 1)}\n${escapado.slice(indice + 1)}`,
+    escapado.replace('%', '%E2%80%8B%'),
+  ];
+  for (const entrada of partido) {
+    const resultado = decodificarAutomatico(entrada);
+    assert.equal(resultado.ok, true, resultado.error);
+    assert.equal(resultado.datos.nombre, 'Panadería');
+    assert.equal(resultado.advertencias.some((aviso) => aviso.includes('no traía el cierre')), false);
+  }
+});
+
+test('una 2.053 cargada, con minijuegos y la bóveda llena, entra sin aviso', () => {
+  const minijuego = '1:2:3:'.repeat(120);
+  const edificios = Array.from({ length: 20 }, () => `10,20,30,1,${minijuego},0,10`).join(';');
+  const misc = Array.from({ length: 55 }, () => '0');
+  misc[0] = '9.062424055290409e52';
+  misc[1] = '4.615326035923986e56';
+  misc[8] = '1.0425252089159072e56';
+  misc[22] = 'halloween';
+  misc[47] = Array.from({ length: 876 }, (_, id) => String(id)).join(',');
+  const mods = `Cookie Assistant 2 0:${JSON.stringify({ lastVersion: '0.9.33', datos: 'x'.repeat(4_000) })};META:*sample mod,cookieassistant2`;
+  const resultado = decodificarAutomatico(partida({
+    carrera: '1700000000000;1686353674943;1792386084103;Horno Grande;qdlfx;0,1,2,3,4,5,6',
+    misc,
+    edificios,
+    mejoras: '1'.repeat(875 * 2),
+    logros: '1'.repeat(643),
+    efectos: '0,300,150,7',
+    mods,
+  }));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.deepEqual(resultado.advertencias, []);
+  assert.equal(resultado.datos.edificios.length, 20);
+  assert.equal(resultado.datos.edificios[19].nombre, 'Tú');
+  assert.equal(resultado.datos.mejoras.compradas, 875);
+  assert.equal(resultado.datos.mejoras.nombresCompradas.length, 875);
+  assert.equal(resultado.datos.logros.obtenidos, 643);
+  assert.equal(resultado.datos.logros.nombres.length, 643);
+  assert.equal(resultado.datos.galletas, 9.062424055290409e52);
+  assert.equal(resultado.datos.mods.datos[0].version, '0.9.33');
+  assert.equal(resultado.datos.efectos[0].nombre, 'Frenesí');
+  const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
+  assert.ok(html.includes('Horno Grande'));
+  assert.ok(html.includes('Dedo índice reforzado'));
 });
 
 test('un payload de más de un mega, todavía bajo el tope, se rechaza rápido', { timeout: 30_000 }, () => {

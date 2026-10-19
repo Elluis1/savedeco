@@ -2,6 +2,18 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-19 — Revisión del PR 2
+
+Revisión independiente de los casos hostiles del lector de Cookie Clicker. Correcciones chicas en la misma rama:
+
+- La bóveda (`Game.vault`, campo 47, ids separados por coma) no es un número. Con unas 26 mejoras de tres dígitos pasa los 100 caracteres y el lector avisaba que había dejado una estadística en cero, aunque las galletas se leían bien. El aviso ahora solo sale si un campo que de verdad leemos como número no entra. Una bóveda con las 876 mejoras de la loc sigue leyéndose.
+- Un `%XX` del `escape` del juego partido por un salto o un espacio de ancho cero se limpia antes de `decodeURIComponent`. Antes eso tiraba y una partida válida se veía dañada.
+- La nota del formato ahora dice los topes reales: 80 edificios, 20.000 bits, 80 efectos, 200 mods y 30 `|`.
+
+Una 2.053 cargada entra: la de Elluis tiene 20 edificios, 1.750 bits de mejoras y 643 de logros, y un armado con minijuegos y la bóveda llena tampoco avisa. Una versión más nueva que 2.053 avisa y se lee con las reglas actuales.
+
+PR: https://github.com/Elluis1/savedeco/pull/2
+
 ## 2026-10-19 — Romper
 
 Pasada de casos hostiles sobre el lector de Cookie Clicker, que es el único que hay en main. Los tests nuevos están en `tests/romper.test.js` y corren con `node --test`. Los casos grandes y los binarios se arman en el test: no se commitean archivos pesados.

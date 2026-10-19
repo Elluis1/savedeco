@@ -32,6 +32,16 @@ const MAX_PIPES = 30;
 const MAX_DIGITOS = 100;
 const FECHA_MAXIMA = 8.64e15;
 
+// Índices de la sección 4 que este lector pasa por numero(). La temporada (22)
+// y la bóveda (47) no van: WriteSave guarda Game.vault como ids unidos por coma,
+// y una partida que esconde varias decenas de mejoras ahí pasa los 100 caracteres
+// sin que haya ningún número roto. Si se suma otro misc[n] numérico, hay que
+// agregarlo acá para que el aviso coincida con lo que de verdad se pone en cero.
+const INDICES_NUMERICOS_STATS = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 20, 21, 25, 26, 27, 28, 29,
+  30, 31, 32, 33, 34, 35, 36, 37, 42, 43, 46, 48, 51,
+];
+
 // Copiar desde la web a veces mete espacios de ancho cero que no son \s.
 const INVISIBLES = /[\s\u200B\u200C\u200D\u2060]+/g;
 
@@ -132,10 +142,12 @@ export function abrirCodigo(texto) {
     return { vacio: false, teniaFin: false, plano: null, demasiadoGrande: true };
   }
   if (original.trim() === '') return { vacio: true, teniaFin: false, plano: null };
-  let s = original.trim();
-  // El cierre se busca después de sacar saltos y espacios de ancho cero.
-  // Si no, un "!END!" cortado al pegar (`!\nEND!` o `%21\nEND%21`) parece que no estuviera.
-  const finCodificado = /%21end%21/i.test(sinInvisibles(s));
+  // Espacios, saltos y anchos cero se sacan ANTES de decodeURIComponent.
+  // Si no, un `%2B` o un `%21END%21` partido al pegar (`%2\nB`, `%2\u200bB`,
+  // `!\nEND!`) hace fallar el decode y una partida válida se lee como dañada.
+  let s = sinInvisibles(original);
+  if (s === '') return { vacio: true, teniaFin: false, plano: null };
+  const finCodificado = /%21end%21/i.test(s);
   if (s.includes('%')) {
     s = s.replace(/%u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
     try {
@@ -143,8 +155,9 @@ export function abrirCodigo(texto) {
     } catch {
       // Si el % no es un escape válido, seguimos con lo que haya quedado.
     }
+    // %E2%80%8B (ancho cero) y %20 recién aparecen al decodificar.
+    s = sinInvisibles(s);
   }
-  s = sinInvisibles(s);
   const teniaFin = finCodificado || /!END!/i.test(s);
   s = s.replace(/!END!.*$/i, '');
   const relleno = conRelleno(s);
@@ -498,7 +511,7 @@ function decodificarPlano(texto) {
   if (misc.length < 2 || muestraGalletas === '' || Number.isNaN(Number.parseFloat(muestraGalletas))) {
     return { ok: false, error: MENSAJE_TRUNCADO, advertencias };
   }
-  if (misc.some((campo) => campo.length > MAX_DIGITOS)) {
+  if (INDICES_NUMERICOS_STATS.some((indice) => (misc[indice] || '').length > MAX_DIGITOS)) {
     advertencias.push('Hay un número demasiado largo en las estadísticas. Lo dejé en cero: no entra en un valor que se pueda mostrar.');
   }
 
