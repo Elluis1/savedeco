@@ -2,6 +2,19 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-19 — Revisión del PR 1
+
+Revisión independiente del primer lector, comparando contra `Game.WriteSave` / `Game.LoadSave`. Correcciones chicas en la misma rama:
+
+- Un save anterior a la 1.035 ya no corre los ids de mejoras, logros y edificios cuando hay un hueco vacío.
+- El logro largo de Adolphus W. Green muestra `&`, no la entidad `&amp;`.
+- Una celda de tabla con texto plano se ve, y se escapa igual que el resto.
+- Un código o un archivo de más de 4 millones de caracteres se rechaza antes de parsearlo.
+- El aviso de error usa el mismo escape que los paneles. El formulario no manda el código por GET si el JavaScript no llega a engancharse.
+- La tabla de estadísticas del formato ya no dice que extraemos campos que esta versión deja pasar.
+
+PR: https://github.com/Elluis1/savedeco/pull/1
+
 ## 2026-10-19 — Savedeco: esqueleto + lector de Cookie Clicker
 
 Primera versión de Savedeco. Repo vacío salvo el README inicial de `main`: este cambio arma el sitio estático, el núcleo de lectores y el lector de Cookie Clicker en solo lectura.

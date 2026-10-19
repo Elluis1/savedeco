@@ -19,7 +19,7 @@
   <main class="envoltorio">
     <p class="aviso-privacidad">Todo pasa en tu navegador. El código que pegás no sale de esta máquina: no hay servidor de por medio y no lo guardamos en ningún lado.</p>
 
-    <form id="formulario" class="lector">
+    <form id="formulario" class="lector" method="post" action="#">
       <div class="fila-controles">
         <label class="campo-grande" for="codigo">Código de exportación</label>
         <label class="notacion" for="notacion">
@@ -30,7 +30,7 @@
           </select>
         </label>
       </div>
-      <textarea id="codigo" name="codigo" rows="8" spellcheck="false" placeholder="Pegá acá el código, o subí el archivo .txt de la partida."></textarea>
+      <textarea id="codigo" rows="8" spellcheck="false" autocomplete="off" placeholder="Pegá acá el código, o subí el archivo .txt de la partida."></textarea>
       <div class="acciones">
         <label class="boton boton-secundario">
           Subir archivo

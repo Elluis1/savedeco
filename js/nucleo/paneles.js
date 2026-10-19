@@ -1,7 +1,7 @@
 // Componentes genéricos de panel. Reciben datos ya normalizados y devuelven HTML.
 // No saben de ningún juego: solo de tarjetas, barras, tablas, listas y logros.
 
-function escapar(valor) {
+export function escaparHtml(valor) {
   return String(valor ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -12,20 +12,21 @@ function escapar(valor) {
 
 function textoDe(item, formatear, formatearFecha) {
   if (item == null) return '';
-  if (Object.prototype.hasOwnProperty.call(item, 'numero')) return escapar(formatear(item.numero));
-  if (Object.prototype.hasOwnProperty.call(item, 'fecha')) return escapar(formatearFecha(item.fecha));
-  return escapar(item.texto ?? '');
+  if (typeof item !== 'object') return escaparHtml(item);
+  if (Object.prototype.hasOwnProperty.call(item, 'numero')) return escaparHtml(formatear(item.numero));
+  if (Object.prototype.hasOwnProperty.call(item, 'fecha')) return escaparHtml(formatearFecha(item.fecha));
+  return escaparHtml(item.texto ?? '');
 }
 
 function detalleDe(item) {
-  return item.detalle ? `<p class="detalle">${escapar(item.detalle)}</p>` : '';
+  return item.detalle ? `<p class="detalle">${escaparHtml(item.detalle)}</p>` : '';
 }
 
 function panelTarjetas(panel, formatear, formatearFecha) {
   const tarjetas = (panel.items || [])
     .map((item) => {
       return `<article class="tarjeta">
-        <h3>${escapar(item.etiqueta)}</h3>
+        <h3>${escaparHtml(item.etiqueta)}</h3>
         <p class="valor">${textoDe(item, formatear, formatearFecha)}</p>
         ${detalleDe(item)}
       </article>`;
@@ -41,11 +42,11 @@ function panelBarras(panel, formatear) {
     .map((item) => {
       const valor = Number(item.valor) || 0;
       const ancho = Math.max(0, Math.min(100, (valor / maximo) * 100));
-      const extra = item.detalle ? `<span class="detalle-barra">${escapar(item.detalle)}</span>` : '';
+      const extra = item.detalle ? `<span class="detalle-barra">${escaparHtml(item.detalle)}</span>` : '';
       return `<li class="fila-barra">
         <div class="fila-barra-texto">
-          <span class="nombre-barra">${escapar(item.etiqueta)}</span>
-          <span class="cantidad-barra">${escapar(formatear(valor))}</span>
+          <span class="nombre-barra">${escaparHtml(item.etiqueta)}</span>
+          <span class="cantidad-barra">${escaparHtml(formatear(valor))}</span>
         </div>
         <div class="pista" aria-hidden="true"><span class="relleno" style="width:${ancho.toFixed(2)}%"></span></div>
         ${extra}
@@ -62,24 +63,24 @@ function panelProgreso(panel, formatear) {
       const obtenidos = Number(grupo.obtenidos) || 0;
       const porcentaje = total > 0 ? Math.max(0, Math.min(100, (obtenidos / total) * 100)) : 0;
       const nombres = (grupo.nombres || [])
-        .map((nombre) => `<li>${escapar(nombre)}</li>`)
+        .map((nombre) => `<li>${escaparHtml(nombre)}</li>`)
         .join('');
       const lista = nombres
         ? `<details class="lista-nombres">
-            <summary>Ver los ${escapar(formatear(obtenidos))} nombres</summary>
+            <summary>Ver los ${escaparHtml(formatear(obtenidos))} nombres</summary>
             <input class="filtro" type="search" placeholder="Filtrar por nombre" data-filtro>
             <ul data-lista>${nombres}</ul>
           </details>`
         : '';
       return `<article class="grupo-progreso">
         <div class="fila-barra-texto">
-          <h3>${escapar(grupo.etiqueta)}</h3>
-          <p class="cantidad-barra">${escapar(formatear(obtenidos))} / ${escapar(formatear(total))}</p>
+          <h3>${escaparHtml(grupo.etiqueta)}</h3>
+          <p class="cantidad-barra">${escaparHtml(formatear(obtenidos))} / ${escaparHtml(formatear(total))}</p>
         </div>
-        <div class="pista" role="meter" aria-valuenow="${obtenidos}" aria-valuemin="0" aria-valuemax="${total}" aria-label="${escapar(grupo.etiqueta)}">
+        <div class="pista" role="meter" aria-valuenow="${obtenidos}" aria-valuemin="0" aria-valuemax="${total}" aria-label="${escaparHtml(grupo.etiqueta)}">
           <span class="relleno" style="width:${porcentaje.toFixed(2)}%"></span>
         </div>
-        ${grupo.detalle ? `<p class="detalle">${escapar(grupo.detalle)}</p>` : ''}
+        ${grupo.detalle ? `<p class="detalle">${escaparHtml(grupo.detalle)}</p>` : ''}
         ${lista}
       </article>`;
     })
@@ -90,17 +91,17 @@ function panelProgreso(panel, formatear) {
 function panelLista(panel) {
   const items = panel.items || [];
   if (items.length === 0) {
-    return `<p class="vacio">${escapar(panel.vacio || 'No hay nada para mostrar.')}</p>`;
+    return `<p class="vacio">${escaparHtml(panel.vacio || 'No hay nada para mostrar.')}</p>`;
   }
   const filas = items
     .map((item) => {
-      const marca = item.marca ? `<span class="pastilla">${escapar(item.marca)}</span>` : '';
+      const marca = item.marca ? `<span class="pastilla">${escaparHtml(item.marca)}</span>` : '';
       return `<li class="item-lista">
         <div class="fila-barra-texto">
-          <strong>${escapar(item.titulo)}</strong>
+          <strong>${escaparHtml(item.titulo)}</strong>
           ${marca}
         </div>
-        ${item.detalle ? `<p class="detalle">${escapar(item.detalle)}</p>` : ''}
+        ${item.detalle ? `<p class="detalle">${escaparHtml(item.detalle)}</p>` : ''}
       </li>`;
     })
     .join('');
@@ -109,7 +110,7 @@ function panelLista(panel) {
 
 function panelTabla(panel, formatear, formatearFecha) {
   const columnas = panel.columnas || [];
-  const cabeza = columnas.map((columna) => `<th>${escapar(columna.etiqueta || columna.id)}</th>`).join('');
+  const cabeza = columnas.map((columna) => `<th>${escaparHtml(columna.etiqueta || columna.id)}</th>`).join('');
   const cuerpo = (panel.filas || [])
     .map((fila) => {
       const celdas = columnas
@@ -145,10 +146,10 @@ function formatearFechaPorDefecto(marca) {
 export function renderizarPanel(panel, formatear, formatearFecha = formatearFechaPorDefecto) {
   const tipo = RENDER[panel?.tipo] ? panel.tipo : 'tarjetas';
   const cuerpo = RENDER[tipo](panel || {}, formatear, formatearFecha);
-  const nota = panel?.nota ? `<p class="nota">${escapar(panel.nota)}</p>` : '';
-  return `<section class="panel" data-panel="${escapar(panel?.id || tipo)}">
+  const nota = panel?.nota ? `<p class="nota">${escaparHtml(panel.nota)}</p>` : '';
+  return `<section class="panel" data-panel="${escaparHtml(panel?.id || tipo)}">
     <header class="panel-encabezado">
-      <h2>${escapar(panel?.titulo || 'Panel')}</h2>
+      <h2>${escaparHtml(panel?.titulo || 'Panel')}</h2>
     </header>
     ${nota}
     ${cuerpo}

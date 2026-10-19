@@ -30,6 +30,6 @@ Universal Paperclips y A Dark Room guardan en `localStorage` y no tienen un cód
 - El fondo, el tipo de leche y las auras del dragón quedan como id numérico. No mapeamos el nombre de cada sprite.
 - El nivel del dragón es el índice de etapa, sin el título.
 - La apariencia de Tú son siete índices de genes. No tenemos el nombre visual de cada opción.
-- Falta un fixture sintético de una versión anterior a 2.0046, con el bitfield empaquetado de verdad, además del camino de código que ya está.
+- Hay un test sintético del bitfield empaquetado (versión 2.000) y de la lista con huecos (1.030). Sigue faltando un fixture real de una partida vieja.
 - Una notación en escala larga (billón = 10^12) para quien lea los nombres en español de toda la vida. Hoy la corta sigue al juego a propósito.
 - Si más adelante dos lectores empatan, un selector manual.

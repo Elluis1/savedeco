@@ -1,5 +1,5 @@
-import { decodificarAutomatico, presentar } from './nucleo/decodificar.js';
-import { engancharFiltros, renderizarPaneles } from './nucleo/paneles.js';
+import { LIMITE_CODIGO, decodificarAutomatico, presentar } from './nucleo/decodificar.js';
+import { engancharFiltros, escaparHtml, renderizarPaneles } from './nucleo/paneles.js';
 import { NOTACION_CIENTIFICA, NOTACION_CORTA, formatearNumero } from './nucleo/numeros.js';
 import { listarLectores } from './nucleo/registro.js';
 import './lectores/indice.js';
@@ -36,16 +36,8 @@ function restaurarNotacion() {
   }
 }
 
-function escapar(valor) {
-  return String(valor ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
 function mostrarError(mensaje) {
-  resultado.innerHTML = `<div class="alerta" role="alert"><p>${escapar(mensaje)}</p></div>`;
+  resultado.innerHTML = `<div class="alerta" role="alert"><p>${escaparHtml(mensaje)}</p></div>`;
 }
 
 function mostrar(resultadoDecodificado) {
@@ -57,11 +49,11 @@ function mostrar(resultadoDecodificado) {
   const formatear = (valor) => formatearNumero(valor, notacionElegida());
   const paneles = presentar(resultadoDecodificado, formatear);
   const avisos = (resultadoDecodificado.advertencias || [])
-    .map((aviso) => `<li>${escapar(aviso)}</li>`)
+    .map((aviso) => `<li>${escaparHtml(aviso)}</li>`)
     .join('');
   const bloqueAvisos = avisos ? `<ul class="advertencias">${avisos}</ul>` : '';
   resultado.innerHTML = `
-    <p class="partida-ok">Partida de ${escapar(resultadoDecodificado.nombreJuego || 'un juego')}, versión ${escapar(resultadoDecodificado.version)}.</p>
+    <p class="partida-ok">Partida de ${escaparHtml(resultadoDecodificado.nombreJuego || 'un juego')}, versión ${escaparHtml(resultadoDecodificado.version)}.</p>
     ${bloqueAvisos}
     ${renderizarPaneles(paneles, formatear)}
   `;
@@ -84,6 +76,11 @@ formulario.addEventListener('submit', (evento) => {
 archivo.addEventListener('change', () => {
   const file = archivo.files?.[0];
   if (!file) return;
+  if (file.size > LIMITE_CODIGO) {
+    mostrarError('Ese archivo es demasiado grande para leerlo en el navegador. Un export pesa unos pocos kilobytes.');
+    archivo.value = '';
+    return;
+  }
   const lector = new FileReader();
   lector.addEventListener('load', () => {
     entrada.value = String(lector.result ?? '');

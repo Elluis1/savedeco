@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodificarAutomatico } from '../js/nucleo/decodificar.js';
-import { renderizarPanel } from '../js/nucleo/paneles.js';
+import { LIMITE_CODIGO, MENSAJE_LARGO, decodificarAutomatico } from '../js/nucleo/decodificar.js';
+import { escaparHtml, renderizarPanel } from '../js/nucleo/paneles.js';
 import { registrar } from '../js/nucleo/registro.js';
 import '../js/lectores/indice.js';
 
@@ -37,4 +37,27 @@ test('los paneles escapan el texto que viene de la partida', () => {
   }, (valor) => String(valor));
   assert.equal(html.includes('<script>'), false);
   assert.ok(html.includes('&lt;script&gt;'));
+});
+
+test('la tabla muestra texto plano y lo escapa', () => {
+  const html = renderizarPanel({
+    id: 't',
+    tipo: 'tabla',
+    titulo: 'Tabla',
+    columnas: [{ id: 'a', etiqueta: 'A' }, { id: 'b', etiqueta: 'B' }],
+    filas: [{ a: '<b>hola</b>', b: { numero: 2 } }],
+  }, (valor) => `n${valor}`);
+  assert.ok(html.includes('&lt;b&gt;hola&lt;/b&gt;'));
+  assert.equal(html.includes('<b>'), false);
+  assert.ok(html.includes('n2'));
+});
+
+test('escaparHtml cierra comillas para atributos', () => {
+  assert.equal(escaparHtml(`<a href='x' class="y">`), '&lt;a href=&#39;x&#39; class=&quot;y&quot;&gt;');
+});
+
+test('un código enorme no se procesa', () => {
+  const resultado = decodificarAutomatico(`${'A'.repeat(LIMITE_CODIGO + 1)}!END!`);
+  assert.equal(resultado.ok, false);
+  assert.equal(resultado.error, MENSAJE_LARGO);
 });

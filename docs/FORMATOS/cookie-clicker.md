@@ -54,7 +54,7 @@ Desde la 2.0046 es una tira de `0`/`1` en el orden en que `WriteSave` las concat
 
 El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los números grandes van en notación científica, como los escribe `parseFloat(...).toString()`.
 
-| # | Variable | Qué mostramos |
+| # | Variable | Qué es |
 | --- | --- | --- |
 | 0 | `Game.cookies` | Galletas en el banco |
 | 1 | `Game.cookiesEarned` | Horneadas esta ascensión |
@@ -66,8 +66,8 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 7 | `Game.milkType` | Id de leche. Igual que el fondo |
 | 8 | `Game.cookiesReset` | Entregadas al ascender |
 | 9 | `Game.elderWrath` | Ira de las ancianas, 0 a 3. En los datos |
-| 10 | `Game.pledges` | Veces que se compró el pacto. En los datos |
-| 11 | `Game.pledgeT` | Tiempo de pacto restante, en fotogramas. En los datos |
+| 10 | `Game.pledges` | Veces que se compró el pacto. Esta versión no lo extrae |
+| 11 | `Game.pledgeT` | Tiempo de pacto restante, en fotogramas. Esta versión no lo extrae |
 | 12 | `Game.nextResearch` | Id de la investigación en curso |
 | 13 | `Game.researchT` | Fotogramas de investigación. `-1` es “ya terminó” |
 | 14 | `Game.resets` | Cantidad de ascensiones |
@@ -84,7 +84,7 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 25 | `Game.prestige` | Prestigio guardado |
 | 26 | `Game.heavenlyChips` | Pepitas sin gastar. En inglés, heavenly chips |
 | 27 | `Game.heavenlyChipsSpent` | Pepitas gastadas |
-| 28 | `Game.heavenlyCookies` | Campo viejo, el juego ya no lo usa. Si es 0 no lo mostramos |
+| 28 | `Game.heavenlyCookies` | Campo viejo. Esta versión no lo extrae |
 | 29 | `Game.ascensionMode` | `0` ninguno, `1` Renacido |
 | 30–34 | `Game.permanentUpgrades` | Cinco ids de mejora. `-1` o vacío es ranura libre |
 | 35 | `Game.dragonLevel` | Índice de etapa. El título de cada etapa no lo mostramos |
@@ -109,6 +109,8 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 54 | `Game.cookiesReceived` | Galletas recibidas |
 
 Lo que venga después del 54, en una versión más nueva, queda como desconocido y se avisa.
+
+Los paneles de esta versión muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, terrones, edificios, logros, mejoras, prestigio, pepitas, ascensiones, modo, nivel del dragón, heraldos, el efecto activo y los mods. Si un campo de esta tabla no está en esa lista, queda documentado para no inventarlo después, pero esta versión no lo extrae.
 
 Las horneadas en total no son un campo. El juego las muestra como `cookiesEarned + cookiesReset` (está así en el armado de las estadísticas, alrededor de la línea del texto “Cookies baked (all time)”). Hacemos la misma suma.
 
@@ -170,7 +172,7 @@ El orden es el de `new Game.Object`, que no cambió: cada edificio nuevo se agre
 
 Desde la 2.024 cada edificio es `cantidad,comprados,galletas,nivel,minijuego,silenciado,máximo`. `comprados` cuenta también los que se vendieron. `máximo` es el pico de esta ascensión. Antes de la 2.024 no hay máximo y usamos la cantidad. Antes de la 2.003 el nivel se fuerza a 0, como hace `LoadSave`.
 
-El minijuego (jardín, bolsa, panteón, grimorio) va en el quinto campo, con `:` y a veces espacios. No lo interpretamos. Si ese campo trajera comas, nos quedamos con los dos últimos como silenciado y máximo, que es lo que el formato actual deja al final.
+El minijuego (jardín, bolsa, panteón, grimorio) va en el quinto campo, con `:`, espacios o `/`. No lo interpretamos. `LoadSave` lee silenciado y máximo en los índices fijos 5 y 6, o sea que asume que el minijuego no trae comas. `WriteSave` los agrega al final. Si ese campo trajera comas, nos quedamos con los dos últimos, que es lo que se escribió. En el ejemplo no hay comas adentro.
 
 En la partida de ejemplo hay 20 edificios y 14.023 en total. El Cursor tiene 893 y Tú tiene 452.
 
@@ -181,6 +183,8 @@ Cada mejora aporta dos bits, en orden de id: desbloqueada y comprada. Cada logro
 La loc del 2026-10-19 tiene 876 mejoras (ids 0 a 875) y 643 logros (ids 0 a 642). El save 2.053 del ejemplo trae 875 pares y 643 bits: la mejora 875 (`Devorador ambar gris`, en inglés Wrinkler ambergris) se agregó después y no entra en ese bitfield. La 874 sigue siendo Ratón omnipresente, que es la última que la wiki de la 2.052 nombra (Omniplast mouse). Si un save trae más bits que nombres, el sobrante se llama “Mejora desconocida #id” o “Logro desconocido #id”.
 
 En el ejemplo: 717 mejoras compradas, 742 desbloqueadas, 523 logros. Las cinco ranuras permanentes son los ids 766, 825, 739, 874 y 835. La 874 es Ratón omnipresente.
+
+El logro 230 trae en la loc un `<div>` con el sprite de una moneda. Acá queda solo el texto: no cargamos imágenes del juego. El 240 trae `<br>` y la entidad `&amp;`; en pantalla se ve el texto, con el ampersand de verdad.
 
 ## Efectos (sección 8)
 

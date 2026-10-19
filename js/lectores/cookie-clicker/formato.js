@@ -4,6 +4,7 @@
 // pack3() hoy devuelve el bitfield tal cual; las versiones viejas usan unpack2 o unpack.
 
 import { edificios, logros, mejoras } from './catalogo.js';
+import { LIMITE_CODIGO, MENSAJE_LARGO } from '../../nucleo/decodificar.js';
 import { formatearFotogramas } from '../../nucleo/numeros.js';
 
 export const MENSAJE_DANADO = 'Este código parece de Cookie Clicker, pero está dañado. Volvé a copiarlo entero, con el !END! del final.';
@@ -90,6 +91,9 @@ function conRelleno(b64) {
 
 export function abrirCodigo(texto) {
   const original = String(texto ?? '');
+  if (original.length > LIMITE_CODIGO) {
+    return { vacio: false, teniaFin: false, plano: null, demasiadoGrande: true };
+  }
   if (original.trim() === '') return { vacio: true, teniaFin: false, plano: null };
   let s = original.trim();
   const teniaFinCodificado = /%21end%21/i.test(s);
@@ -154,9 +158,12 @@ function descomprimirBinGrande(texto) {
 function bitsDesde(texto, version, pares) {
   if (!texto) return [];
   if (version < 1.035) {
+    // LoadSave indexa el split, así que un hueco vacío cuenta. El `;` final
+    // de WriteSave deja un segmento vacío que no es una mejora.
+    const partes = texto.split(';');
+    if (partes.length > 0 && partes[partes.length - 1] === '') partes.pop();
     const salida = [];
-    for (const parte of texto.split(';')) {
-      if (!parte) continue;
+    for (const parte of partes) {
       const campos = parte.split(',');
       salida.push(Number.parseInt(campos[0], 10) ? '1' : '0');
       if (pares) salida.push(Number.parseInt(campos[1], 10) ? '1' : '0');
@@ -285,6 +292,7 @@ function leerApariencia(texto) {
 
 export function detectar(texto) {
   const abierto = abrirCodigo(texto);
+  if (abierto.demasiadoGrande) return 0.99;
   if (abierto.vacio) return 0;
   if (!abierto.plano) return abierto.teniaFin ? 0.62 : 0.08;
   const secciones = abierto.plano.split('|');
@@ -298,6 +306,9 @@ export function detectar(texto) {
 
 export function decodificar(texto) {
   const abierto = abrirCodigo(texto);
+  if (abierto.demasiadoGrande) {
+    return { ok: false, error: MENSAJE_LARGO, advertencias: [] };
+  }
   if (abierto.vacio) {
     return { ok: false, error: 'Pegá un código de exportación o subí el archivo de la partida.', advertencias: [] };
   }
@@ -319,7 +330,9 @@ export function decodificar(texto) {
   if (!abierto.teniaFin) {
     advertencias.push('El código no traía el cierre !END!. Igual lo leí, pero si ves datos raros puede estar cortado.');
   }
-  if (version < 2.0046) {
+  if (version < 1.035) {
+    advertencias.push(`La versión ${versionTexto} guarda las mejoras y los logros en una lista separada por punto y coma. Los leí con el método de esa época.`);
+  } else if (version < 2.0046) {
     advertencias.push(`La versión ${versionTexto} guarda las mejoras y los logros empaquetados. Los abrí con el método de esa época.`);
   }
 
@@ -351,9 +364,14 @@ export function decodificar(texto) {
   const tipoTerronId = numero(misc[46], true);
   const tipoTerron = TIPOS_TERRON[tipoTerronId] || `desconocido (${tipoTerronId})`;
 
-  const entradasEdificios = (secciones[5] || '').split(';').filter((entrada) => entrada.length > 0);
+  const trozosEdificios = (secciones[5] || '').split(';');
+  if (trozosEdificios.length > 0 && trozosEdificios[trozosEdificios.length - 1] === '') trozosEdificios.pop();
   const edificiosLeidos = [];
-  entradasEdificios.forEach((entrada, indice) => {
+  trozosEdificios.forEach((entrada, indice) => {
+    if (entrada === '') {
+      advertencias.push(`No pude leer el edificio #${indice}. Lo salteo.`);
+      return;
+    }
     const edificio = leerEdificio(entrada, version);
     if (!edificio) {
       advertencias.push(`No pude leer el edificio #${indice}. Lo salteo.`);
@@ -366,9 +384,9 @@ export function decodificar(texto) {
       ...edificio,
     });
   });
-  if ((secciones[5] || '') !== '' && entradasEdificios.length > 0) {
-    const ultima = entradasEdificios[entradasEdificios.length - 1];
-    if (ultima.split(',').length < 4) {
+  if (trozosEdificios.length > 0) {
+    const ultima = trozosEdificios[trozosEdificios.length - 1];
+    if (ultima !== '' && ultima.split(',').length < 4) {
       return { ok: false, error: MENSAJE_TRUNCADO, advertencias };
     }
   }

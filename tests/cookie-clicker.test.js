@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import { decodificarAutomatico } from '../js/nucleo/decodificar.js';
+import { MENSAJE_LARGO, decodificarAutomatico } from '../js/nucleo/decodificar.js';
+import { renderizarPaneles } from '../js/nucleo/paneles.js';
+import { logros } from '../js/lectores/cookie-clicker/catalogo.js';
 import { lector } from '../js/lectores/cookie-clicker/index.js';
 import '../js/lectores/indice.js';
 
@@ -140,4 +142,98 @@ test('los inputs inválidos avisan y no tiran excepción', () => {
     assert.equal(typeof resultado.error, 'string');
     assert.ok(resultado.error.length > 10);
   }
+});
+
+test('un save anterior a 1.035 no corre los ids cuando hay un hueco', () => {
+  const plano = [
+    '1.030',
+    '',
+    '111;222;333;Vieja;abc;',
+    '101',
+    '10;20;3;4;5',
+    '4,5,6,0;;7,8,9,0;',
+    '1,1;;0,1;',
+    '1;;1;',
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.deepEqual(resultado.datos.mejoras.nombresCompradas, ['Dedo índice reforzado', 'Ambidextro']);
+  assert.equal(resultado.datos.mejoras.desbloqueadas, 1);
+  assert.equal(resultado.datos.mejoras.total, 3);
+  assert.deepEqual(resultado.datos.logros.nombres, ['Galleta mañanera', 'Muy horneado']);
+  assert.equal(resultado.datos.edificios.find((edificio) => edificio.indice === 0).nombre, 'Cursor');
+  assert.equal(resultado.datos.edificios.find((edificio) => edificio.indice === 2).nombre, 'Granja');
+  assert.equal(resultado.datos.edificios.find((edificio) => edificio.indice === 2).cantidad, 7);
+  assert.equal(resultado.datos.edificios.find((edificio) => edificio.indice === 1), undefined);
+  assert.equal(resultado.datos.edificios.find((edificio) => edificio.nombre === 'Abuela'), undefined);
+  assert.ok(resultado.advertencias.some((aviso) => aviso.includes('punto y coma')));
+});
+
+test('la 2.000 sigue abriendo el bitfield empaquetado', () => {
+  function pack2(values) {
+    const chunks = values.match(/.{1,14}/g);
+    let packed = '';
+    for (const chunk of chunks) packed += String.fromCharCode(Number.parseInt(`1${chunk}`, 2));
+    return packed;
+  }
+  const plano = [
+    '2.000',
+    '',
+    '111;222;333;Horno;abc;0,0,0,0,0,0,0',
+    pack2('101010'),
+    '10;20;3;4;5;6;7;8;9;0;0;0;0;0;1;2;3;4;5;6;7;8;christmas',
+    '4,5,6,1,,0,9;',
+    pack2('110011'),
+    pack2('101'),
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.deepEqual(resultado.datos.mejoras.nombresCompradas, ['Dedo índice reforzado', 'Ambidextro']);
+  assert.deepEqual(resultado.datos.logros.nombres, ['Galleta mañanera', 'Muy horneado']);
+  assert.equal(resultado.datos.temporada.nombre, 'Navidad');
+  assert.ok(resultado.advertencias.some((aviso) => aviso.includes('empaquetados')));
+});
+
+test('el nombre de la panadería, la temporada y los mods no se vuelven HTML', () => {
+  const plano = [
+    '2.053',
+    '',
+    '1;2;3;<img src=x onerror=alert(1)>;seed;0,0,0,0,0,0,0',
+    '1',
+    '1;2;3;4;5;6;7;8;9;0;0;0;0;0;1;2;3;4;5;6;7;8;<script>alert(1)</script>',
+    '1,1,1,1,,0,1;',
+    '11',
+    '1',
+    '',
+    'META:*<img src=x onerror=alert(2)>," onclick=alert(3);Maloso:{"lastVersion":"<img src=x onerror=alert(5)>"}',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
+  assert.equal(html.includes('<script'), false);
+  assert.equal(html.includes('<img'), false);
+  assert.equal(html.includes('<strong>"'), false);
+  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+  assert.ok(html.includes('<strong>&quot; onclick=alert(3)</strong>'));
+  assert.ok(html.includes('&lt;img src=x onerror=alert(5)&gt;'));
+  assert.equal(lector.decodificar('x'.repeat(4_000_001)).error, MENSAJE_LARGO);
+});
+
+test('el logro largo usa el ampersand de la loc, no la entidad', () => {
+  const nombre = logros.find((logro) => logro.includes('Southmayd'));
+  assert.ok(nombre.includes('Southmayd & Choate'));
+  assert.equal(nombre.includes('&amp;'), false);
+  const html = renderizarPaneles([{
+    id: 'progreso',
+    tipo: 'progreso',
+    titulo: 'Logros',
+    grupos: [{ etiqueta: 'Logros', obtenidos: 1, total: 1, nombres: [nombre] }],
+  }], (valor) => String(valor));
+  assert.ok(html.includes('Southmayd &amp; Choate'));
+  assert.equal(html.includes('&amp;amp;'), false);
 });
