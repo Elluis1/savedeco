@@ -13,6 +13,6 @@ Qué quedó:
 - Tests con `node --test`, workflow de Actions y `netlify.toml` sin build.
 - Docs de arquitectura, formato, roadmap y esta bitácora.
 
-PR: se anota el número al abrirlo.
+PR: https://github.com/Elluis1/savedeco/pull/1
 
 Próximos pasos: interpretar minijuegos, mapear auras y fondos, y un segundo lector (Kittens Game o Trimps, los dos con LZString).
