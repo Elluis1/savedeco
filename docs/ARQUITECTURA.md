@@ -32,6 +32,22 @@ Cuando no puede:
 
 Si el lector expone `armarPaneles(datos, formatear)`, la página lo usa para rehacer los paneles al cambiar la notación, sin volver a parsear.
 
+## Exportar
+
+Después de leer, la página puede bajar la partida. Se arma en el navegador, con `Blob` y `URL.createObjectURL`. No hay un request afuera y no se toca el save.
+
+El armado vive en `js/nucleo/exportar.js`. El núcleo no conoce juegos. Le pide al lector `armarExportacion(datos)` si el método existe. Si no existe, o si tira, arma el documento con los paneles. Por eso un lector nuevo hereda el texto, el CSV y el JSON: le alcanza con devolver paneles. Si quiere conseguidos y faltantes, o campos que la pantalla no muestra, implementa `armarExportacion` y devuelve el mismo documento.
+
+El documento tiene `titulo` (entra en el nombre del archivo), `juego`, `version`, `notas` y `secciones`. Cada sección trae `campos` (texto, entero, número o fecha, con una nota de qué es) y, si hace falta, una `tabla`. El núcleo escribe tres archivos:
+
+- Un `.txt` en Markdown, para pegarlo o adjuntarlo a una IA. Los números grandes van legibles y también exactos.
+- Un `.csv` con BOM UTF-8, separador `;` y salto de línea de Windows, para el Excel en español. Cada sección es un bloque con su encabezado. Un texto que arranca con `=`, `+`, `-` o `@` lleva un apóstrofo para que Excel no lo ejecute.
+- Un `.json` con los mismos datos. Un número o una fecha es `{ valor, legible, exacto }`.
+
+El nombre del archivo usa el título del lector y el día UTC, sin los caracteres que Windows rechaza (`\ / : * ? " < > |` y los de control). En Cookie Clicker el título es la panadería.
+
+Un número que no entra en un entero seguro se escribe en notación científica con punto decimal. Es el float del save: el juego no guarda más precisión. El tope de cada archivo es el mismo que el del código de entrada, 4 millones de caracteres. Si se pasa, el archivo se corta y lo dice.
+
 ## Cómo sumar un juego
 
 1. Creá `js/lectores/<juego>/` con un `index.js` que exporte `lector`.
@@ -53,6 +69,16 @@ export const lector = {
   },
   decodificar(texto) {
     return { ok: false, error: 'Todavía no.', advertencias: [] };
+  },
+  // Opcional. Si no está, la descarga sale de los paneles.
+  armarExportacion(datos) {
+    return {
+      titulo: 'partida',
+      juego: 'Mi juego',
+      version: '1',
+      notas: ['Qué no se pudo nombrar.'],
+      secciones: [],
+    };
   },
 };
 ```

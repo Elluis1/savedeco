@@ -1,4 +1,5 @@
 import { LIMITE_CODIGO, decodificarAutomatico, presentar } from './nucleo/decodificar.js';
+import { armarArchivo } from './nucleo/exportar.js';
 import { engancharFiltros, escaparHtml, renderizarAdvertencias, renderizarAlerta, renderizarPaneles } from './nucleo/paneles.js';
 import { NOTACION_CIENTIFICA, NOTACION_CORTA, formatearNumero } from './nucleo/numeros.js';
 import { listarLectores } from './nucleo/registro.js';
@@ -40,6 +41,41 @@ function mostrarError(mensaje) {
   resultado.innerHTML = renderizarAlerta(mensaje);
 }
 
+function descargarBlob(archivo) {
+  // Blob y createObjectURL: la descarga queda en el navegador. La CSP no deja
+  // traer un generador de afuera, y acá no hace falta.
+  const blob = new Blob([archivo.contenido], { type: archivo.mime });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = archivo.nombre;
+  enlace.rel = 'noopener';
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  // El click de la descarga es asíncrono en algunos navegadores.
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function engancharExportacion(raiz, resultadoDecodificado) {
+  const estado = raiz.querySelector('[data-exportar-estado]');
+  raiz.querySelectorAll('[data-exportar]').forEach((boton) => {
+    boton.addEventListener('click', () => {
+      try {
+        const archivo = armarArchivo(resultadoDecodificado, boton.dataset.exportar, { ahora: new Date() });
+        if (!archivo?.contenido) {
+          if (estado) estado.textContent = 'No pude armar ese archivo.';
+          return;
+        }
+        descargarBlob(archivo);
+        if (estado) estado.textContent = `Descarga lista: ${archivo.nombre}`;
+      } catch {
+        if (estado) estado.textContent = 'No pude armar el archivo. La partida sigue en pantalla.';
+      }
+    });
+  });
+}
+
 function mostrar(resultadoDecodificado) {
   ultimo = resultadoDecodificado;
   if (!resultadoDecodificado?.ok) {
@@ -52,9 +88,22 @@ function mostrar(resultadoDecodificado) {
   resultado.innerHTML = `
     <p class="partida-ok">Partida de ${escaparHtml(resultadoDecodificado.nombreJuego || 'un juego')}, versión ${escaparHtml(resultadoDecodificado.version)}.</p>
     ${bloqueAvisos}
+    <section class="panel exportar" aria-label="Descargar los datos">
+      <header class="panel-encabezado">
+        <h2>Guardar estos datos</h2>
+      </header>
+      <p class="nota">Descargá todo lo leído para tenerlo guardado o pasárselo a una IA. Se arma en esta máquina: no se sube a ningún lado.</p>
+      <div class="acciones">
+        <button type="button" class="boton boton-principal" data-exportar="texto">Texto para una IA</button>
+        <button type="button" class="boton boton-secundario" data-exportar="csv">Excel (CSV)</button>
+        <button type="button" class="boton boton-secundario" data-exportar="json">JSON</button>
+      </div>
+      <p class="estado-exportar" data-exportar-estado></p>
+    </section>
     ${renderizarPaneles(paneles, formatear)}
   `;
   engancharFiltros(resultado);
+  engancharExportacion(resultado, resultadoDecodificado);
 }
 
 function decodificarTexto(texto) {

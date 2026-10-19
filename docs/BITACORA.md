@@ -2,6 +2,26 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-19 — Exportar la partida
+
+Luigi pidió poder guardarse toda la estadística, en texto o en Excel, para tenerla o pasársela a una IA. La descarga se arma en el navegador. No se sube nada y no se toca el save.
+
+Qué quedó:
+
+- El núcleo (`js/nucleo/exportar.js`) arma tres archivos a partir de un documento genérico: un `.txt` en Markdown, un CSV con BOM y punto y coma (Excel en español, una tabla por sección) y un JSON con los mismos datos.
+- Si el lector expone `armarExportacion`, se usa eso. Si no, salen los paneles. Un lector nuevo lo hereda sin escribir la descarga.
+- Cookie Clicker llena el documento con el resumen, los edificios, los logros y las mejoras (conseguidos y faltantes, con nombre), el prestigio, los efectos, los mods y los ids que no tienen nombre (fondo, leche, auras, apariencia de Tú). Las notas dicen qué es cada cosa y qué queda desconocido.
+- Los números grandes van legibles y también exactos. Si no entran en un entero seguro, el exacto es la notación científica del float del save.
+- El nombre del archivo lleva la panadería y la fecha UTC, sin caracteres que Windows rechaza.
+- El tope sigue en 4 millones de caracteres. Por encima, el archivo se corta y lo avisa.
+- Los botones están debajo del aviso de partida leída: Texto para una IA, Excel (CSV) y JSON. La bajada usa `Blob` y `URL.createObjectURL`. La CSP no se tocó.
+
+En la partida de Elluis el texto pesa 89 167 B, el CSV 81 171 B y el JSON 454 233 B (643 logros y 875 mejoras, con nombre). Armar los tres entra en la misma corrida de `node --test`, en decenas de milisegundos.
+
+PR: pendiente
+
+Próximos pasos: los de antes (minijuegos, auras y fondos con nombre, un segundo lector). La exportación ya la hereda el que venga.
+
 ## 2026-10-19 — Revisión del PR 3
 
 Revisión independiente de la medición y de la lista en una columna. Correcciones chicas en la misma rama:

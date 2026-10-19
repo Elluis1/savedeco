@@ -2,6 +2,10 @@
 
 Savedeco arranca con Cookie Clicker porque el export está documentado y el fuente es público. Estos son los siguientes candidatos que sí tienen un código de exportación conocido, y lo que todavía falta en el lector actual.
 
+## Exportar la partida
+
+Ya está en el núcleo, no es un pendiente por juego. Después de leer se bajan un texto (para una IA), un CSV (Excel en español) y un JSON. Si el lector no implementa `armarExportacion`, los archivos salen de los paneles. Cookie Clicker sí la implementa: logros y mejoras van conseguidos y faltantes, con nombre, y también lo que el panel no muestra. El detalle está en [la arquitectura](ARQUITECTURA.md).
+
 ## Próximos juegos
 
 En todos los casos el lector sería solo lectura, igual que ahora: descomprimir en el navegador y mostrar paneles. Ninguno de estos formatos está implementado todavía.
