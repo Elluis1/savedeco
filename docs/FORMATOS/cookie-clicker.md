@@ -208,3 +208,14 @@ El `*` no está documentado en el `main.js` web. Lo leemos como “desactivado�
 ## Números en pantalla
 
 La notación corta imita `formatEveryThirdPower` + `formatLong` del juego: a partir del millón, grupos de mil, con el nombre de la escala corta estadounidense. En español: millón, billón (10^9, no el billón de la escala larga), trillón, …, septendecillón (10^54). El ejemplo `4.615326035923986e+56` se ve como `461,533 septendecillones`. La científica, para ese mismo número, es `4,615e+56`. Se cambia con el selector de la página.
+
+## Entradas que no son una partida
+
+Si el texto no se puede abrir, la página muestra un aviso y sigue. No hay stack ni un resultado a medias.
+
+- Más de 4 millones de caracteres se rechaza antes de decodificar. Justo en el tope se intenta leer; un carácter más, no.
+- Base64 inválido, binario, UTF-16 o el export de otro juego: error amable. Sin `!END!` y sin la forma de una partida (versión, estadísticas y un edificio), este lector ni siquiera se elige.
+- En el sobre se ignoran espacios, saltos de línea y espacios de ancho cero, que se cuelan al copiar. Un `!END!` partido por un salto cuenta como cierre.
+- Una sección muy por encima de una partida real (decenas de miles de edificios, un bitfield enorme, cientos de miles de `|`) no se expande: se rechaza con un aviso. El JSON de un mod demasiado grande o demasiado anidado se cuenta y no se interpreta.
+- Una fecha fuera del rango de `Date` se muestra como desconocida, con aviso. El resto de la partida sigue.
+- Una versión mayor a 2.053 se lee con las reglas actuales y se avisa: el formato puede haber corrido un campo.

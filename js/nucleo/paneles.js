@@ -133,14 +133,26 @@ const RENDER = {
 function formatearFechaPorDefecto(marca) {
   const numero = Number(marca);
   if (!Number.isFinite(numero) || numero <= 0) return 'desconocida';
+  const fecha = new Date(numero);
+  // Fuera del rango de Date, toISOString también tira. Mejor un texto que una excepción.
+  if (Number.isNaN(fecha.getTime())) return 'desconocida';
   try {
     return new Intl.DateTimeFormat('es-AR', {
       dateStyle: 'long',
       timeStyle: 'short',
-    }).format(new Date(numero));
+    }).format(fecha);
   } catch {
-    return new Date(numero).toISOString();
+    return 'desconocida';
   }
+}
+
+export function renderizarAlerta(mensaje) {
+  return `<div class="alerta" role="alert"><p>${escaparHtml(mensaje)}</p></div>`;
+}
+
+export function renderizarAdvertencias(avisos) {
+  const items = (avisos || []).map((aviso) => `<li>${escaparHtml(aviso)}</li>`).join('');
+  return items ? `<ul class="advertencias">${items}</ul>` : '';
 }
 
 export function renderizarPanel(panel, formatear, formatearFecha = formatearFechaPorDefecto) {

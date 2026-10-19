@@ -9,6 +9,31 @@ import { formatearFotogramas } from '../../nucleo/numeros.js';
 
 export const MENSAJE_DANADO = 'Este código parece de Cookie Clicker, pero está dañado. Volvé a copiarlo entero, con el !END! del final.';
 export const MENSAJE_TRUNCADO = 'El código está truncado: falta una parte de la partida. Exportala de nuevo y pegala completa.';
+export const MENSAJE_ENORME = 'Este código parece de Cookie Clicker, pero una sección es demasiado grande para leerla sin trabar el navegador. Un export pesa unos pocos kilobytes; si pegaste otra cosa, no la vamos a procesar.';
+
+// La 2.053 es la que está mapeada en el catálogo. Una más nueva se lee igual, con aviso.
+const VERSION_CONOCIDA = 2.053;
+
+// Tope holgado contra una partida real (20 edificios, ~900 mejoras, unos pocos efectos).
+// Por encima de esto no armamos listas: el HTML de cientos de miles de filas cuelga la pestaña.
+const MAX_BITS = 20_000;
+const MAX_ENTRADA_EMPAQUETADA = 4_000;
+const MAX_ENTRADA_LISTA_VIEJA = 80_000;
+const MAX_EDIFICIOS = 80;
+const MAX_EFECTOS = 80;
+const MAX_MODS = 200;
+const MAX_CAMPOS_STATS = 120;
+const MAX_LARGO_SECCION = 80_000;
+const MAX_LARGO_MODS = 500_000;
+const MAX_JSON_MOD = 100_000;
+const MAX_PROFUNDIDAD_JSON = 40;
+const MAX_NOMBRES_LISTA = 1_500;
+const MAX_PIPES = 30;
+const MAX_DIGITOS = 100;
+const FECHA_MAXIMA = 8.64e15;
+
+// Copiar desde la web a veces mete espacios de ancho cero que no son \s.
+const INVISIBLES = /[\s\u200B\u200C\u200D\u2060]+/g;
 
 const TEMPORADAS = {
   halloween: 'Halloween',
@@ -68,16 +93,28 @@ function decodificarBase64Utf8(b64) {
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b64) || b64.length % 4 !== 0) {
     throw new Error('base64');
   }
-  let binario;
-  if (typeof atob === 'function') {
-    binario = atob(b64);
-  } else {
-    binario = Buffer.from(b64, 'base64').toString('latin1');
+  const binario = typeof atob === 'function'
+    ? atob(b64)
+    : Buffer.from(b64, 'base64').toString('latin1');
+  // TextDecoder evita el arreglo de millones de "%xx" que armaba el camino de decodeURIComponent.
+  const bytes = new Uint8Array(binario.length);
+  for (let i = 0; i < binario.length; i += 1) bytes[i] = binario.charCodeAt(i) & 0xff;
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+}
+
+function sinInvisibles(valor) {
+  return valor.replace(INVISIBLES, '');
+}
+
+// Corta apenas pasa el tope: un save hostil de varios MB no se recorre entero.
+function demasiadosSeparadores(texto, codigo, maximo) {
+  let vistos = 0;
+  for (let i = 0; i < texto.length; i += 1) {
+    if (texto.charCodeAt(i) !== codigo) continue;
+    vistos += 1;
+    if (vistos > maximo) return true;
   }
-  const porcentajes = Array.prototype.map
-    .call(binario, (caracter) => `%${caracter.charCodeAt(0).toString(16).padStart(2, '0')}`)
-    .join('');
-  return decodeURIComponent(porcentajes);
+  return false;
 }
 
 function conRelleno(b64) {
@@ -96,17 +133,19 @@ export function abrirCodigo(texto) {
   }
   if (original.trim() === '') return { vacio: true, teniaFin: false, plano: null };
   let s = original.trim();
-  const teniaFinCodificado = /%21end%21/i.test(s);
+  // El cierre se busca después de sacar saltos y espacios de ancho cero.
+  // Si no, un "!END!" cortado al pegar (`!\nEND!` o `%21\nEND%21`) parece que no estuviera.
+  const finCodificado = /%21end%21/i.test(sinInvisibles(s));
   if (s.includes('%')) {
     s = s.replace(/%u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
     try {
       s = decodeURIComponent(s);
     } catch {
-      // Si el % no es un escape válido, seguimos con el texto crudo.
+      // Si el % no es un escape válido, seguimos con lo que haya quedado.
     }
   }
-  const teniaFin = teniaFinCodificado || /!END!/i.test(s);
-  s = s.replace(/\s+/g, '');
+  s = sinInvisibles(s);
+  const teniaFin = finCodificado || /!END!/i.test(s);
   s = s.replace(/!END!.*$/i, '');
   const relleno = conRelleno(s);
   if (!relleno) return { vacio: false, teniaFin, plano: null, base64Invalido: true };
@@ -120,20 +159,11 @@ export function abrirCodigo(texto) {
 }
 
 function desempaquetar2(empacado) {
-  let valores = '';
+  const partes = new Array(empacado.length);
   for (let i = 0; i < empacado.length; i += 1) {
-    valores += empacado.charCodeAt(i).toString(2).slice(1);
+    partes[i] = empacado.charCodeAt(i).toString(2).slice(1);
   }
-  return valores;
-}
-
-function desempaquetar(empacado) {
-  const bytes = [];
-  for (let i = 0; i < empacado.length; i += 1) {
-    const codigo = empacado.charCodeAt(i);
-    bytes.push((codigo >>> 8) & 0xff, codigo & 0xff);
-  }
-  return bytes;
+  return partes.join('');
 }
 
 function descomprimirBin(numero) {
@@ -148,32 +178,71 @@ function descomprimirBinGrande(texto) {
   const bits = [];
   for (const parte of String(texto).split(';')) {
     if (!parte) continue;
-    const numero = Number.parseInt(parte, 10);
+    const numero = Number.parseInt(parte.length > MAX_DIGITOS ? parte.slice(0, MAX_DIGITOS) : parte, 10);
     if (!Number.isFinite(numero)) continue;
-    bits.push(...descomprimirBin(numero));
+    const pieza = descomprimirBin(numero);
+    for (let i = 0; i < pieza.length; i += 1) bits.push(pieza[i]);
+    if (bits.length > MAX_BITS) return null;
   }
   return bits;
 }
 
+// Devuelve el bitfield como string. null = demasiado grande para abrirlo.
+// Un '2' u otro carácter que no sea 0/1 lo rechaza el llamador como dañado.
 function bitsDesde(texto, version, pares) {
-  if (!texto) return [];
+  if (!texto) return '';
   if (version < 1.035) {
+    if (texto.length > MAX_ENTRADA_LISTA_VIEJA) return null;
     // LoadSave indexa el split, así que un hueco vacío cuenta. El `;` final
     // de WriteSave deja un segmento vacío que no es una mejora.
     const partes = texto.split(';');
     if (partes.length > 0 && partes[partes.length - 1] === '') partes.pop();
+    if (partes.length > MAX_BITS) return null;
     const salida = [];
     for (const parte of partes) {
       const campos = parte.split(',');
       salida.push(Number.parseInt(campos[0], 10) ? '1' : '0');
       if (pares) salida.push(Number.parseInt(campos[1], 10) ? '1' : '0');
     }
-    return salida;
+    if (salida.length > MAX_BITS) return null;
+    return salida.join('');
   }
-  if (version < 1.05) return descomprimirBinGrande(texto).map(String);
-  if (version < 1.0502) return desempaquetar(texto).map(String);
-  if (version < 2.0046) return desempaquetar2(texto).split('');
-  return texto.split('');
+  if (version < 1.05) {
+    if (texto.length > MAX_ENTRADA_EMPAQUETADA) return null;
+    const bits = descomprimirBinGrande(texto);
+    if (bits == null) return null;
+    return bits.join('');
+  }
+  if (version < 1.0502) {
+    if (texto.length > MAX_ENTRADA_EMPAQUETADA) return null;
+    const salida = [];
+    for (let i = 0; i < texto.length; i += 1) {
+      const codigo = texto.charCodeAt(i);
+      const alto = (codigo >>> 8) & 0xff;
+      const bajo = codigo & 0xff;
+      // unpack del juego devuelve bytes. Si no son 0 o 1, el bitfield está roto.
+      if ((alto !== 0 && alto !== 1) || (bajo !== 0 && bajo !== 1)) return '2';
+      salida.push(alto === 1 ? '1' : '0', bajo === 1 ? '1' : '0');
+    }
+    if (salida.length > MAX_BITS) return null;
+    return salida.join('');
+  }
+  if (version < 2.0046) {
+    if (texto.length > MAX_ENTRADA_EMPAQUETADA) return null;
+    const bits = desempaquetar2(texto);
+    if (bits.length > MAX_BITS) return null;
+    return bits;
+  }
+  if (texto.length > MAX_BITS) return null;
+  return texto;
+}
+
+function soloBits(texto) {
+  for (let i = 0; i < texto.length; i += 1) {
+    const codigo = texto.charCodeAt(i);
+    if (codigo !== 48 && codigo !== 49) return false;
+  }
+  return true;
 }
 
 function bitsPreferencias(texto, version) {
@@ -185,8 +254,21 @@ function bitsPreferencias(texto, version) {
 
 function numero(texto, entero = false) {
   if (texto == null || texto === '') return 0;
+  // Un campo numérico real entra en notación científica corta. Miles de dígitos
+  // no son un valor del juego y parseFloat los recorre al pedo.
+  if (texto.length > MAX_DIGITOS) return 0;
   const valor = entero ? Number.parseInt(texto, 10) : Number.parseFloat(texto);
   return Number.isFinite(valor) ? valor : 0;
+}
+
+function leerFecha(texto, advertencias, etiqueta) {
+  if (texto == null || texto === '') return 0;
+  const valor = numero(texto, true);
+  if (valor <= 0 || valor > FECHA_MAXIMA || Number.isNaN(new Date(valor).getTime())) {
+    advertencias.push(`La fecha de ${etiqueta} no entra en un calendario. La muestro como desconocida.`);
+    return 0;
+  }
+  return valor;
 }
 
 function leerEdificio(entrada, version) {
@@ -217,18 +299,40 @@ function nombresActivos(bits, catalogo, paso, desplazado) {
   const total = Math.floor(bits.length / paso);
   let activos = 0;
   for (let i = 0; i < total; i += 1) {
-    const marcado = bits[i * paso + desplazado] === '1';
-    if (!marcado) continue;
+    if (bits[i * paso + desplazado] !== '1') continue;
     activos += 1;
+    if (nombres.length >= MAX_NOMBRES_LISTA) continue;
     nombres.push(catalogo[i] || (paso === 2 ? `Mejora desconocida #${i}` : `Logro desconocido #${i}`));
   }
-  return { activos, total, nombres };
+  return { activos, total, nombres, recortado: activos > nombres.length };
+}
+
+function profundidadExcesiva(texto) {
+  let profundidad = 0;
+  for (let i = 0; i < texto.length; i += 1) {
+    const codigo = texto.charCodeAt(i);
+    if (codigo !== 123 && codigo !== 91) {
+      if (codigo === 125 || codigo === 93) profundidad -= 1;
+      continue;
+    }
+    profundidad += 1;
+    if (profundidad > MAX_PROFUNDIDAD_JSON) return true;
+  }
+  return false;
+}
+
+function acortar(texto, maximo) {
+  const valor = texto || '';
+  if (valor.length <= maximo) return { texto: valor, recortado: false };
+  return { texto: valor.slice(0, maximo), recortado: true };
 }
 
 function leerMods(seccion) {
   const lista = [];
   const datos = [];
-  if (!seccion) return { lista, datos };
+  let omitioJson = false;
+  let listaEnorme = false;
+  if (!seccion) return { lista, datos, omitioJson, listaEnorme };
   for (const parte of seccion.split(';')) {
     if (!parte) continue;
     const corte = parte.indexOf(':');
@@ -236,26 +340,40 @@ function leerMods(seccion) {
     const id = parte.slice(0, corte);
     const cuerpo = parte.slice(corte + 1).replaceAll('[P]', '|').replaceAll('[S]', ';');
     if (id === 'META') {
+      if (demasiadosSeparadores(cuerpo, 44, 300)) {
+        listaEnorme = true;
+        continue;
+      }
       for (const crudo of cuerpo.split(',')) {
         if (!crudo) continue;
         const asterisco = crudo.startsWith('*');
+        const nombre = acortar(asterisco ? crudo.slice(1) : crudo, 200);
         lista.push({
-          nombre: asterisco ? crudo.slice(1) : crudo,
+          nombre: nombre.texto,
           asterisco,
         });
       }
       continue;
     }
     let versionMod = null;
-    try {
-      const json = JSON.parse(cuerpo);
-      if (json && typeof json.lastVersion === 'string') versionMod = json.lastVersion;
-    } catch {
-      versionMod = null;
+    let jsonOmitido = false;
+    if (cuerpo.length > MAX_JSON_MOD || profundidadExcesiva(cuerpo)) {
+      // JSON.parse de un árbol enorme o muy anidado se come la pestaña. Ni lo intentamos.
+      jsonOmitido = true;
+    } else {
+      try {
+        const json = JSON.parse(cuerpo);
+        if (json && typeof json === 'object' && Object.prototype.hasOwnProperty.call(json, 'lastVersion') && typeof json.lastVersion === 'string') {
+          versionMod = json.lastVersion;
+        }
+      } catch {
+        versionMod = null;
+      }
     }
-    datos.push({ id, caracteres: cuerpo.length, version: versionMod });
+    if (jsonOmitido) omitioJson = true;
+    datos.push({ id: id.slice(0, 200), caracteres: cuerpo.length, version: versionMod ? versionMod.slice(0, 80) : null, jsonOmitido });
   }
-  return { lista, datos };
+  return { lista, datos, omitioJson, listaEnorme };
 }
 
 function leerEfectos(seccion) {
@@ -284,10 +402,23 @@ function leerEfectos(seccion) {
 
 function leerApariencia(texto) {
   if (!texto) return [];
-  return texto.split(',').map((valor, indice) => ({
-    id: GENES[indice] || `gen desconocido #${indice}`,
-    indice: numero(valor, true),
-  }));
+  const partes = texto.split(',');
+  const tope = Math.min(partes.length, 32);
+  const salida = [];
+  for (let indice = 0; indice < tope; indice += 1) {
+    salida.push({
+      id: GENES[indice] || `gen desconocido #${indice}`,
+      indice: numero(partes[indice], true),
+    });
+  }
+  return salida;
+}
+
+function seccionExcesiva(texto, largo, maxSeparadores) {
+  if (!texto) return false;
+  if (texto.length > largo) return true;
+  if (maxSeparadores == null) return false;
+  return demasiadosSeparadores(texto, 59, maxSeparadores);
 }
 
 export function detectar(texto) {
@@ -295,16 +426,32 @@ export function detectar(texto) {
   if (abierto.demasiadoGrande) return 0.99;
   if (abierto.vacio) return 0;
   if (!abierto.plano) return abierto.teniaFin ? 0.62 : 0.08;
+  // Muchos "|" no es un export: partirlos armaría un arreglo gigante.
+  if (demasiadosSeparadores(abierto.plano, 124, MAX_PIPES)) return abierto.teniaFin ? 0.55 : 0.12;
   const secciones = abierto.plano.split('|');
   const cruda = secciones[0] || '';
   const version = Number.parseFloat(cruda);
-  const versionOk = /^\d+(\.\d+)?$/.test(cruda) && version >= 0.1 && version < 100;
-  if (!versionOk) return abierto.teniaFin ? 0.55 : 0.1;
-  if (secciones.length >= 5) return abierto.teniaFin ? 0.98 : 0.9;
-  return abierto.teniaFin ? 0.72 : 0.6;
+  const versionOk = /^\d+\.\d+$/.test(cruda) && version >= 1 && version < 100;
+  if (!versionOk) return abierto.teniaFin ? 0.55 : 0.12;
+  const stats = secciones[4] || '';
+  const corte = stats.indexOf(';');
+  const primer = (corte === -1 ? stats : stats.slice(0, corte)).slice(0, MAX_DIGITOS);
+  const statsOk = primer.length > 0 && Number.isFinite(Number.parseFloat(primer));
+  const edificiosOk = /\d+,\d+,\d+/.test((secciones[5] || '').slice(0, 240));
+  if (statsOk && edificiosOk && secciones.length >= 6) return abierto.teniaFin ? 0.98 : 0.9;
+  if (statsOk && secciones.length >= 5) return abierto.teniaFin ? 0.84 : 0.66;
+  return abierto.teniaFin ? 0.7 : 0.4;
 }
 
 export function decodificar(texto) {
+  try {
+    return decodificarPlano(texto);
+  } catch {
+    return { ok: false, error: MENSAJE_DANADO, advertencias: [] };
+  }
+}
+
+function decodificarPlano(texto) {
   const abierto = abrirCodigo(texto);
   if (abierto.demasiadoGrande) {
     return { ok: false, error: MENSAJE_LARGO, advertencias: [] };
@@ -314,6 +461,9 @@ export function decodificar(texto) {
   }
   if (!abierto.plano) {
     return { ok: false, error: abierto.teniaFin ? MENSAJE_DANADO : MENSAJE_TRUNCADO, advertencias: [] };
+  }
+  if (demasiadosSeparadores(abierto.plano, 124, MAX_PIPES)) {
+    return { ok: false, error: MENSAJE_DANADO, advertencias: [] };
   }
 
   const secciones = abierto.plano.split('|');
@@ -335,23 +485,37 @@ export function decodificar(texto) {
   } else if (version < 2.0046) {
     advertencias.push(`La versión ${versionTexto} guarda las mejoras y los logros empaquetados. Los abrí con el método de esa época.`);
   }
+  if (version > VERSION_CONOCIDA) {
+    advertencias.push(`La versión ${versionTexto} es más nueva que la ${VERSION_CONOCIDA} que conoce este lector. La leí igual; si algún número no cierra, puede haber cambiado el formato.`);
+  }
+  if (seccionExcesiva(secciones[2], MAX_LARGO_SECCION, 40) || seccionExcesiva(secciones[4], MAX_LARGO_SECCION, MAX_CAMPOS_STATS)) {
+    return { ok: false, error: MENSAJE_ENORME, advertencias };
+  }
 
   const carrera = secciones[2].split(';');
   const misc = secciones[4].split(';');
-  if (misc.length < 2 || Number.isNaN(Number.parseFloat(misc[0]))) {
+  const muestraGalletas = (misc[0] || '').slice(0, MAX_DIGITOS);
+  if (misc.length < 2 || muestraGalletas === '' || Number.isNaN(Number.parseFloat(muestraGalletas))) {
     return { ok: false, error: MENSAJE_TRUNCADO, advertencias };
+  }
+  if (misc.some((campo) => campo.length > MAX_DIGITOS)) {
+    advertencias.push('Hay un número demasiado largo en las estadísticas. Lo dejé en cero: no entra en un valor que se pueda mostrar.');
   }
 
   const galletas = numero(misc[0]);
   const galletasHorneadasAscension = numero(misc[1]);
   const galletasEntregadas = numero(misc[8]);
-  const temporadaId = misc[22] || '';
+  const temporadaCruda = misc[22] || '';
+  const temporadaCorta = acortar(temporadaCruda, 80);
+  const temporadaId = temporadaCorta.texto;
   let temporada = 'Ninguna';
-  if (temporadaId) {
-    temporada = TEMPORADAS[temporadaId] || null;
+  if (temporadaCruda) {
+    temporada = TEMPORADAS[temporadaCruda] || null;
     if (!temporada) {
       temporada = temporadaId;
-      advertencias.push(`La temporada "${temporadaId}" no está en la lista que conocemos. La dejo con el nombre crudo.`);
+      advertencias.push(temporadaCorta.recortado
+        ? 'La temporada trae un nombre larguísimo y no está en la lista que conocemos. Muestro solo el principio.'
+        : `La temporada "${temporadaId}" no está en la lista que conocemos. La dejo con el nombre crudo.`);
     }
   }
 
@@ -364,8 +528,15 @@ export function decodificar(texto) {
   const tipoTerronId = numero(misc[46], true);
   const tipoTerron = TIPOS_TERRON[tipoTerronId] || `desconocido (${tipoTerronId})`;
 
-  const trozosEdificios = (secciones[5] || '').split(';');
+  const seccionEdificios = secciones[5] || '';
+  if (seccionExcesiva(seccionEdificios, MAX_LARGO_SECCION, MAX_EDIFICIOS)) {
+    return { ok: false, error: MENSAJE_ENORME, advertencias };
+  }
+  const trozosEdificios = seccionEdificios.split(';');
   if (trozosEdificios.length > 0 && trozosEdificios[trozosEdificios.length - 1] === '') trozosEdificios.pop();
+  if (trozosEdificios.length > MAX_EDIFICIOS) {
+    return { ok: false, error: MENSAJE_ENORME, advertencias };
+  }
   const edificiosLeidos = [];
   trozosEdificios.forEach((entrada, indice) => {
     if (entrada === '') {
@@ -394,9 +565,18 @@ export function decodificar(texto) {
     return { ok: false, error: MENSAJE_TRUNCADO, advertencias };
   }
 
+  const seccionEfectos = secciones[8] || '';
+  const seccionMods = secciones[9] || '';
+  if (seccionExcesiva(seccionEfectos, MAX_LARGO_SECCION, MAX_EFECTOS) || seccionExcesiva(seccionMods, MAX_LARGO_MODS, MAX_MODS)) {
+    return { ok: false, error: MENSAJE_ENORME, advertencias };
+  }
+
   const bitsMejoras = bitsDesde(secciones[6] || '', version, true);
   const bitsLogros = bitsDesde(secciones[7] || '', version, false);
-  if (bitsMejoras.some((bit) => bit !== '0' && bit !== '1') || bitsLogros.some((bit) => bit !== '0' && bit !== '1')) {
+  if (bitsMejoras == null || bitsLogros == null) {
+    return { ok: false, error: MENSAJE_ENORME, advertencias };
+  }
+  if (!soloBits(bitsMejoras) || !soloBits(bitsLogros)) {
     return { ok: false, error: MENSAJE_DANADO, advertencias };
   }
   if (bitsMejoras.length % 2 !== 0) {
@@ -406,6 +586,12 @@ export function decodificar(texto) {
   const compradas = nombresActivos(bitsMejoras, mejoras, 2, 1);
   const desbloqueadas = nombresActivos(bitsMejoras, mejoras, 2, 0);
   const logrosLeidos = nombresActivos(bitsLogros, logros, 1, 0);
+  if (compradas.recortado || desbloqueadas.recortado) {
+    advertencias.push(`Hay demasiadas mejoras para listarlas todas. Muestro los primeros ${MAX_NOMBRES_LISTA} nombres; el conteo sigue siendo el total.`);
+  }
+  if (logrosLeidos.recortado) {
+    advertencias.push(`Hay demasiados logros para listarles el nombre. Muestro los primeros ${MAX_NOMBRES_LISTA}; el conteo sigue siendo el total.`);
+  }
 
   const permanentes = [30, 31, 32, 33, 34].map((indice, ranura) => {
     const id = misc[indice] === undefined || misc[indice] === '' ? -1 : numero(misc[indice], true);
@@ -416,9 +602,19 @@ export function decodificar(texto) {
     };
   });
 
-  const mods = leerMods(secciones[9] || '');
-  const efectos = leerEfectos(secciones[8] || '');
+  const mods = leerMods(seccionMods);
+  if (mods.omitioJson) {
+    advertencias.push('Un mod trae un bloque de datos demasiado grande o demasiado anidado. Lo cuento, pero no lo interpreté.');
+  }
+  if (mods.listaEnorme) {
+    advertencias.push('La lista META de mods es demasiado larga. No la desplegué.');
+  }
+  const efectos = leerEfectos(seccionEfectos);
   const apariencia = leerApariencia(carrera[5] || '');
+  const nombreCrudo = acortar(carrera[3] || '', 300);
+  if (nombreCrudo.recortado) {
+    advertencias.push('El nombre de la panadería es demasiado largo. Muestro solo el principio.');
+  }
 
   if (misc.length > 56) {
     advertencias.push('Hay campos de más al final de las estadísticas. Esta versión del lector no les pone nombre: quedan como desconocidos.');
@@ -427,12 +623,12 @@ export function decodificar(texto) {
   const datos = {
     version: versionTexto,
     versionNumero: version,
-    nombre: carrera[3] || 'sin nombre',
+    nombre: nombreCrudo.texto || 'sin nombre',
     semilla: carrera[4] || '',
     fechas: {
-      inicioAscension: numero(carrera[0], true),
-      inicioPartida: numero(carrera[1], true),
-      ultimoGuardado: numero(carrera[2], true),
+      inicioAscension: leerFecha(carrera[0], advertencias, 'arranque de esta ascensión'),
+      inicioPartida: leerFecha(carrera[1], advertencias, 'arranque de la partida'),
+      ultimoGuardado: leerFecha(carrera[2], advertencias, 'último guardado'),
     },
     galletas,
     galletasHorneadasAscension,
