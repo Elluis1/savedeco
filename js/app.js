@@ -1,5 +1,5 @@
 import { LIMITE_CODIGO, decodificarAutomatico, presentar } from './nucleo/decodificar.js';
-import { engancharFiltros, escaparHtml, renderizarPaneles } from './nucleo/paneles.js';
+import { engancharFiltros, escaparHtml, renderizarAdvertencias, renderizarAlerta, renderizarPaneles } from './nucleo/paneles.js';
 import { NOTACION_CIENTIFICA, NOTACION_CORTA, formatearNumero } from './nucleo/numeros.js';
 import { listarLectores } from './nucleo/registro.js';
 import './lectores/indice.js';
@@ -37,7 +37,7 @@ function restaurarNotacion() {
 }
 
 function mostrarError(mensaje) {
-  resultado.innerHTML = `<div class="alerta" role="alert"><p>${escaparHtml(mensaje)}</p></div>`;
+  resultado.innerHTML = renderizarAlerta(mensaje);
 }
 
 function mostrar(resultadoDecodificado) {
@@ -48,10 +48,7 @@ function mostrar(resultadoDecodificado) {
   }
   const formatear = (valor) => formatearNumero(valor, notacionElegida());
   const paneles = presentar(resultadoDecodificado, formatear);
-  const avisos = (resultadoDecodificado.advertencias || [])
-    .map((aviso) => `<li>${escaparHtml(aviso)}</li>`)
-    .join('');
-  const bloqueAvisos = avisos ? `<ul class="advertencias">${avisos}</ul>` : '';
+  const bloqueAvisos = renderizarAdvertencias(resultadoDecodificado.advertencias);
   resultado.innerHTML = `
     <p class="partida-ok">Partida de ${escaparHtml(resultadoDecodificado.nombreJuego || 'un juego')}, versión ${escaparHtml(resultadoDecodificado.version)}.</p>
     ${bloqueAvisos}
