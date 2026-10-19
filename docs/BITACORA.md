@@ -10,7 +10,7 @@ En la VM de la medición (Xeon de 4 núcleos, 16 GB, Node 22, Chrome 154 headles
 
 Lo que sí se disparaba era abrir la lista de logros. `columns: 2` balancea las columnas y el logro largo de Adolphus (688 caracteres) la llevaba a 172 ms de mediana con el CPU al 4× (muestras 231, 172 y 155). La lista de mejoras, sin ese texto, se quedaba en 34 ms. Saqué las columnas. La misma apertura quedó en 61 ms (104, 60 y 61). A velocidad normal de esta máquina las dos listas ya estaban en ~32 ms y siguen ahí. El peso pasó de 96 698 B a 96 831 B por el comentario del CSS. Los números están en `docs/RENDIMIENTO.md`.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/3
 
 Próximos pasos: si un save real se nota, abrir el base64 una sola vez en el camino del botón (hoy `detectar` y `decodificar` lo hacen cada uno; en el de 400 KB son unos 10 ms). Con un segundo lector, cargarlo al decodificar.
 
