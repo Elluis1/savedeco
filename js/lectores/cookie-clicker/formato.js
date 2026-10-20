@@ -137,6 +137,30 @@ function conRelleno(b64) {
   return b64;
 }
 
+// detectar y decodificar corren uno detrás del otro, con el mismo texto.
+// Sin esto, el botón abre el base64 dos veces. El plano se guarda solo para
+// esa decodificación y se suelta en el microturno si nadie lo pide: un código
+// de varios MB no queda retenido. La marca es un número para que la tarea
+// pendiente no sostenga el string.
+let planoDelTurno = null;
+let marcaPlano = 0;
+
+function recordarPlano(texto, abierto) {
+  marcaPlano += 1;
+  const marca = marcaPlano;
+  planoDelTurno = { texto, abierto, marca };
+  queueMicrotask(() => {
+    if (planoDelTurno && planoDelTurno.marca === marca) planoDelTurno = null;
+  });
+}
+
+function tomarPlanoRecordado(texto) {
+  const guardado = planoDelTurno;
+  if (!guardado || guardado.texto !== texto) return null;
+  planoDelTurno = null;
+  return guardado.abierto;
+}
+
 export function abrirCodigo(texto) {
   const original = String(texto ?? '');
   if (original.length > LIMITE_CODIGO) {
@@ -442,6 +466,7 @@ function seccionExcesiva(texto, largo, maxSeparadores) {
 
 export function detectar(texto) {
   const abierto = abrirCodigo(texto);
+  recordarPlano(texto, abierto);
   if (abierto.demasiadoGrande) return 0.99;
   if (abierto.vacio) return 0;
   if (!abierto.plano) return abierto.teniaFin ? 0.62 : 0.08;
@@ -471,7 +496,7 @@ export function decodificar(texto) {
 }
 
 function decodificarPlano(texto) {
-  const abierto = abrirCodigo(texto);
+  const abierto = tomarPlanoRecordado(texto) || abrirCodigo(texto);
   if (abierto.demasiadoGrande) {
     return { ok: false, error: MENSAJE_LARGO, advertencias: [] };
   }

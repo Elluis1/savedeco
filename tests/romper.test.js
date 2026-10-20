@@ -7,7 +7,7 @@ import test from 'node:test';
 import { LIMITE_CODIGO, MENSAJE_DESCONOCIDO, MENSAJE_LARGO, decodificarAutomatico, presentar } from '../js/nucleo/decodificar.js';
 import { renderizarAdvertencias, renderizarAlerta, renderizarPaneles } from '../js/nucleo/paneles.js';
 import { registrar } from '../js/nucleo/registro.js';
-import { MENSAJE_DANADO, MENSAJE_ENORME } from '../js/lectores/cookie-clicker/formato.js';
+import { MENSAJE_DANADO, MENSAJE_ENORME, decodificar, detectar } from '../js/lectores/cookie-clicker/formato.js';
 import '../js/lectores/indice.js';
 
 const fixture = fs.readFileSync(new URL('./fixtures/luigi-cookieclicker.txt', import.meta.url), 'utf8');
@@ -465,6 +465,49 @@ test('una 2.053 cargada, con la bóveda llena, entra y el relleno de minijuego s
   const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
   assert.ok(html.includes('Horno Grande'));
   assert.ok(html.includes('Dedo índice reforzado'));
+});
+
+function medianaDe(fn) {
+  for (let i = 0; i < 2; i += 1) fn();
+  const muestras = [];
+  for (let i = 0; i < 7; i += 1) {
+    const inicio = performance.now();
+    fn();
+    muestras.push(performance.now() - inicio);
+  }
+  muestras.sort((a, b) => a - b);
+  return muestras[3];
+}
+
+test('el botón abre el base64 una sola vez', async () => {
+  // Escapado, como el export del juego, para que abrir el código pese de verdad.
+  // El mod es relleno: pasa el tope del JSON y no se parsea.
+  const codigo = escapeComoElJuego(partida({
+    mods: `MOD:${'a'.repeat(400_000)}`,
+  }));
+  // El directo primero: si midiera después de detectar, heredaría el plano guardado.
+  const directo = medianaDe(() => decodificar(codigo));
+  const deteccion = medianaDe(() => detectar(codigo));
+  const automatico = medianaDe(() => decodificarAutomatico(codigo));
+  const junto = decodificarAutomatico(codigo);
+  assert.equal(junto.ok, true, junto.error);
+  assert.equal(junto.datos.nombre, 'Horno');
+  assert.equal(junto.datos.mods.datos[0].jsonOmitido, true);
+
+  // Sin el reuso, el automático paga la detección y la lectura (cada una abre
+  // el código) y queda cerca de la suma. Con el plano de la detección, queda
+  // bastante por debajo.
+  assert.ok(
+    automatico < (directo + deteccion) * 0.8,
+    `automático ${automatico.toFixed(2)} ms, directo ${directo.toFixed(2)} ms, detección ${deteccion.toFixed(2)} ms`,
+  );
+
+  await new Promise((resolver) => {
+    setTimeout(resolver, 0);
+  });
+  const suelto = decodificar(fixture);
+  assert.equal(suelto.ok, true, suelto.error);
+  assert.equal(suelto.datos.nombre, 'Elluis');
 });
 
 test('un payload de más de un mega, todavía bajo el tope, se rechaza rápido', { timeout: 30_000 }, () => {

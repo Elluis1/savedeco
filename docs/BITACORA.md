@@ -2,6 +2,18 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Rendimiento
+
+Medí de nuevo, con el script ampliado: además de peso, primer render y decodificación, ahora toma el HTML de cada panel (parcela, minijuegos, bolsa), la apertura de la lista de plantas y el armado de texto, CSV y JSON. La página pesa 183 KB (58 KB gzip). Creció desde el 19 por los minijuegos, la exportación y el CSS de la parcela, no por esta pasada. El primer pintado sigue en unos 40 ms. El fixture de Elluis se decodifica en 0,65 ms. La parcela son 36 casilleros y 0,1 ms de layout.
+
+Lo que valía la pena: el botón abría el base64 dos veces, una en `detectar` y otra en `decodificar`. En el sintético de 400 KB escapado el botón pasó de 9,9 ms a 6,5 ms. En una basura de 2 MB, de 33 ms a 22 ms, y no retiene el string (menos de 1 KB). El fixture no se nota: abrir el código son 0,07 ms. El plano se guarda solo para esa lectura y se suelta en el microturno.
+
+Miré y no toqué el mosaico (ya es barato) ni sacar los 1.240 nombres del HTML inicial: a CPU 4× el frame bajaría de 143 ms a 119 ms, y abrir la lista ya está en dos frames.
+
+PR: https://github.com/Elluis1/savedeco/pull/PENDIENTE
+
+Próximos pasos: si en una notebook de verdad el primer pintado de los paneles se siente, recién ahí conviene no meter los nombres en el DOM hasta abrir la lista. El JSON de Elluis pesa 508 KB; armarlo son 3 ms, así que el candidato sería achicar el pretty-print si alguien lo abre y le pesa. Con un segundo lector, cargarlo al decodificar.
+
 ## 2026-10-20 — Paneles: la parcela del jardín
 
 Diseño de paneles. Antes de elegir miré la página con la partida de Elluis, incluidos los paneles nuevos de Minijuegos, Jardín y Bolsa. El jardín ya traía fila, columna, etapa y si el casillero está abierto, pero en la página era una tabla de las plantas solas. Los hoyos vacíos y los cerrados quedaban solo en la descarga, y no se veía la parcela.

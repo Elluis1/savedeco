@@ -1,5 +1,5 @@
-// Mide peso, decodificación, memoria y (si hay Chrome) el primer render
-// y la apertura de la lista de nombres. No instala nada.
+// Mide peso, decodificación, memoria y (si hay Chrome) el primer render,
+// la parcela, la apertura de las listas y la exportación. No instala nada.
 // Los saves grandes se arman en memoria: no quedan archivos en el repo.
 //
 //   node --expose-gc scripts/medir.mjs
@@ -294,38 +294,80 @@ async function medirNavegador(puerto, fixture) {
           document.querySelector('#codigo').value = fixture;
           const inicio = performance.now();
           document.querySelector('#formulario').requestSubmit();
+          const hastaSync = performance.now() - inicio;
           await new Promise((resolver) => requestAnimationFrame(() => requestAnimationFrame(resolver)));
           const hastaFrame = performance.now() - inicio;
           const resultado = document.querySelector('#resultado');
           const texto = resultado.innerText;
+          const mosaico = resultado.querySelector('.mosaico');
+          const tLayout = performance.now();
+          const altoMosaico = mosaico ? mosaico.getBoundingClientRect().height : 0;
+          const layoutMosaico = performance.now() - tLayout;
           const aperturas = [];
           for (const details of resultado.querySelectorAll('details')) {
             const t0 = performance.now();
             details.open = true;
             await new Promise((resolver) => requestAnimationFrame(() => requestAnimationFrame(resolver)));
             const items = details.querySelectorAll('li').length;
-            aperturas.push({ ms: performance.now() - t0, items, titulo: details.querySelector('summary')?.textContent || '' });
+            const filas = details.querySelectorAll('tbody tr').length;
+            aperturas.push({
+              ms: performance.now() - t0,
+              items,
+              filas,
+              titulo: (details.querySelector('summary')?.textContent || '').trim(),
+              clase: details.className,
+            });
             details.open = false;
             await new Promise((resolver) => requestAnimationFrame(resolver));
           }
-          const details = resultado.querySelector('details');
-          details.open = true;
-          const filtro = details.querySelector('[data-filtro]');
-          filtro.value = 'mañanera';
-          filtro.dispatchEvent(new Event('input'));
-          const lista = details.querySelector('[data-lista]');
-          const visibles = [...lista.querySelectorAll('li')].filter((item) => !item.hidden).length;
-          filtro.value = '';
-          filtro.dispatchEvent(new Event('input'));
+          const filtro = resultado.querySelector('[data-filtro]');
+          const detailsFiltro = filtro ? filtro.closest('details') : null;
+          let visibles = null;
+          let total = null;
+          if (filtro && detailsFiltro) {
+            detailsFiltro.open = true;
+            filtro.value = 'mañanera';
+            filtro.dispatchEvent(new Event('input'));
+            const lista = detailsFiltro.querySelector('[data-lista]');
+            visibles = [...lista.querySelectorAll('li')].filter((item) => !item.hidden).length;
+            total = lista.querySelectorAll('li').length;
+            filtro.value = '';
+            filtro.dispatchEvent(new Event('input'));
+          }
+          const clickOriginal = HTMLAnchorElement.prototype.click;
+          HTMLAnchorElement.prototype.click = function () {
+            if (this.download) return;
+            return clickOriginal.call(this);
+          };
+          const exportaciones = [];
+          for (const tipo of ['texto', 'csv', 'json']) {
+            const boton = resultado.querySelector('[data-exportar="' + tipo + '"]');
+            const estado = resultado.querySelector('[data-exportar-estado]');
+            if (estado) estado.textContent = '';
+            const t0 = performance.now();
+            boton.click();
+            exportaciones.push({
+              tipo,
+              ms: performance.now() - t0,
+              aviso: estado ? estado.textContent : '',
+            });
+          }
+          HTMLAnchorElement.prototype.click = clickOriginal;
           return JSON.stringify({
+            hastaSync,
             hastaFrame,
             nodos: resultado.querySelectorAll('*').length,
             html: resultado.innerHTML.length,
             heap: performance.memory ? performance.memory.usedJSHeapSize : null,
             esElluis: texto.includes('Elluis'),
+            celdas: resultado.querySelectorAll('.celda-mosaico').length,
+            altoMosaico,
+            layoutMosaico,
+            paneles: [...resultado.querySelectorAll('[data-panel]')].map((nodo) => nodo.dataset.panel),
             aperturas,
+            exportaciones,
             visiblesFiltro: visibles,
-            totalFiltro: lista.querySelectorAll('li').length
+            totalFiltro: total
           });
         })()
       `;
@@ -411,10 +453,12 @@ for (let i = 0; i < 3; i += 1) imports.push(importEnProcesoNuevo('js/lectores/in
 console.log('\nImport del lector en un proceso nuevo (ms)', imports.map((n) => redondear(n)));
 console.log('mediana', redondear(mediana(imports)));
 
-const { decodificar, abrirCodigo } = await import(pathToFileURL(path.join(raiz, 'js/lectores/cookie-clicker/formato.js')).href);
-const { decodificarAutomatico } = await import(pathToFileURL(path.join(raiz, 'js/nucleo/decodificar.js')).href);
+const { decodificar, detectar, abrirCodigo } = await import(pathToFileURL(path.join(raiz, 'js/lectores/cookie-clicker/formato.js')).href);
+const { decodificarAutomatico, presentar } = await import(pathToFileURL(path.join(raiz, 'js/nucleo/decodificar.js')).href);
 await import(pathToFileURL(path.join(raiz, 'js/lectores/indice.js')).href);
-const { renderizarPaneles } = await import(pathToFileURL(path.join(raiz, 'js/nucleo/paneles.js')).href);
+const { renderizarPanel, renderizarPaneles } = await import(pathToFileURL(path.join(raiz, 'js/nucleo/paneles.js')).href);
+const { NOTACION_CORTA, formatearNumero } = await import(pathToFileURL(path.join(raiz, 'js/nucleo/numeros.js')).href);
+const { armarArchivo, armarCsv, armarJson, armarTexto, documentoDe } = await import(pathToFileURL(path.join(raiz, 'js/nucleo/exportar.js')).href);
 
 const fixture = fs.readFileSync(path.join(raiz, 'tests/fixtures/luigi-cookieclicker.txt'), 'utf8');
 const sintetico100 = envolver(planoSintetico(100 * 1024));
@@ -455,6 +499,72 @@ console.log(JSON.stringify({
   htmlPanelesBytes: paneles.ultimo.length,
 }, null, 2));
 
+function desglosar(nombre, muestra, veces = 5) {
+  const abrir = medirTiempos(() => abrirCodigo(muestra), veces);
+  const deteccion = medirTiempos(() => detectar(muestra), veces);
+  const directoSave = medirTiempos(() => decodificar(muestra), veces);
+  const automatico = medirTiempos(() => decodificarAutomatico(muestra), veces);
+  console.log(`\nCorte ${nombre}`);
+  console.log(JSON.stringify({
+    caracteres: muestra.length,
+    abrirMs: redondear(abrir.mediana, 3),
+    detectarMs: redondear(deteccion.mediana, 3),
+    decodificarMs: redondear(directoSave.mediana, 3),
+    automaticoMs: redondear(automatico.mediana, 3),
+    confianza: deteccion.ultimo,
+    ok: directoSave.ultimo?.ok === true,
+  }, null, 2));
+}
+
+console.log('\nAbrir el base64 (por separado, y junto en el botón)');
+desglosar('Fixture Elluis', fixture, 7);
+desglosar('Sintético 100 KB', sintetico100, 5);
+desglosar('Sintético 400 KB escapado', sintetico400, 5);
+desglosar('Basura de 2 MB', basura2mb, 3);
+
+const formatear = (valor) => formatearNumero(valor, NOTACION_CORTA);
+const panelesFixture = presentar(resultadoFixture, formatear);
+console.log('\nRender de paneles (HTML en Node, sin layout)');
+const htmlTodos = medirTiempos(() => renderizarPaneles(panelesFixture, formatear), 7);
+const porPanel = panelesFixture.map((panel) => {
+  const muestra = medirTiempos(() => renderizarPanel(panel, formatear), 7);
+  return {
+    id: panel.id,
+    tipo: panel.tipo,
+    medianaMs: redondear(muestra.mediana, 3),
+    bytes: muestra.ultimo.length,
+  };
+});
+console.log(JSON.stringify({
+  paneles: panelesFixture.length,
+  htmlTodosMs: redondear(htmlTodos.mediana, 3),
+  htmlTodosBytes: htmlTodos.ultimo.length,
+  porPanel,
+}, null, 2));
+
+const fechaExport = new Date('2026-10-20T12:00:00Z');
+const armadoDoc = medirTiempos(() => documentoDe(resultadoFixture, { ahora: fechaExport }), 5);
+const documento = armadoDoc.ultimo;
+const textoExport = medirTiempos(() => armarTexto(documento), 5);
+const csvExport = medirTiempos(() => armarCsv(documento), 5);
+const jsonExport = medirTiempos(() => armarJson(documento), 5);
+const tresBotones = medirTiempos(() => {
+  armarArchivo(resultadoFixture, 'texto', { ahora: fechaExport });
+  armarArchivo(resultadoFixture, 'csv', { ahora: fechaExport });
+  armarArchivo(resultadoFixture, 'json', { ahora: fechaExport });
+}, 4);
+console.log('\nExportación del fixture (lo que arman los tres botones)');
+console.log(JSON.stringify({
+  documentoMs: redondear(armadoDoc.mediana, 3),
+  textoMs: redondear(textoExport.mediana, 3),
+  textoBytes: Buffer.byteLength(textoExport.ultimo),
+  csvMs: redondear(csvExport.mediana, 3),
+  csvBytes: Buffer.byteLength(csvExport.ultimo),
+  jsonMs: redondear(jsonExport.mediana, 3),
+  jsonBytes: Buffer.byteLength(jsonExport.ultimo),
+  tresBotonesMs: redondear(tresBotones.mediana, 3),
+}, null, 2));
+
 const server = await servir();
 const puerto = server.address().port;
 try {
@@ -467,16 +577,29 @@ try {
     const heaps = navegador.cargas.map((carga) => carga.heap);
     function resumirFlujo(corridas) {
       return {
+        hastaSyncMs: redondear(mediana(corridas.map((corrida) => corrida.hastaSync)), 1),
         hastaFrameMs: redondear(mediana(corridas.map((corrida) => corrida.hastaFrame)), 1),
         nodos: mediana(corridas.map((corrida) => corrida.nodos)),
         html: mediana(corridas.map((corrida) => corrida.html)),
         heap: mediana(corridas.map((corrida) => corrida.heap)),
         esElluis: corridas.every((corrida) => corrida.esElluis),
+        celdas: mediana(corridas.map((corrida) => corrida.celdas)),
+        altoMosaico: redondear(mediana(corridas.map((corrida) => corrida.altoMosaico)), 1),
+        layoutMosaicoMs: redondear(mediana(corridas.map((corrida) => corrida.layoutMosaico)), 3),
+        paneles: corridas[0].paneles,
         aperturas: corridas[0].aperturas.map((_, indice) => ({
           titulo: corridas[0].aperturas[indice].titulo,
+          clase: corridas[0].aperturas[indice].clase,
           items: corridas[0].aperturas[indice].items,
+          filas: corridas[0].aperturas[indice].filas,
           medianaMs: redondear(mediana(corridas.map((corrida) => corrida.aperturas[indice].ms)), 1),
           muestrasMs: corridas.map((corrida) => redondear(corrida.aperturas[indice].ms, 1)),
+        })),
+        exportaciones: corridas[0].exportaciones.map((_, indice) => ({
+          tipo: corridas[0].exportaciones[indice].tipo,
+          medianaMs: redondear(mediana(corridas.map((corrida) => corrida.exportaciones[indice].ms)), 1),
+          muestrasMs: corridas.map((corrida) => redondear(corrida.exportaciones[indice].ms, 1)),
+          aviso: corridas[0].exportaciones[indice].aviso,
         })),
         filtro: {
           visibles: mediana(corridas.map((corrida) => corrida.visiblesFiltro)),
@@ -494,9 +617,9 @@ try {
       cpu1: resumirFlujo(navegador.a1),
       cpu4: resumirFlujo(navegador.a4),
     }, null, 2));
-    const roto = navegador.a1.some((corrida) => !corrida.esElluis || corrida.visiblesFiltro === 0 || corrida.visiblesFiltro >= corrida.totalFiltro);
+    const roto = navegador.a1.some((corrida) => !corrida.esElluis || corrida.celdas !== 36 || corrida.visiblesFiltro !== 1);
     if (roto) {
-      console.error('El humo del navegador falló: no aparece Elluis o el filtro no recorta.');
+      console.error('El humo del navegador falló: no aparece Elluis, la parcela no tiene 36 casilleros o el filtro no recorta.');
       process.exitCode = 1;
     }
   }
