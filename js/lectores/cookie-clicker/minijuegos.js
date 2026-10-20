@@ -27,7 +27,9 @@ function sinColaVacia(partes) {
 }
 
 function reemplazarPanaderia(plantilla, nombre) {
-  return String(plantilla).replaceAll('%1', nombre || '');
+  const texto = nombre || '';
+  // Función, no string: si el nombre trae $& o $', un reemplazo de texto se lo come.
+  return String(plantilla).replaceAll('%1', () => texto);
 }
 
 // Orden de M.plants en minigameGarden.js. El id del casillero es este índice + 1.

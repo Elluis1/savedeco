@@ -303,6 +303,37 @@ test('el nombre de la panadería, la temporada y los mods no se vuelven HTML', (
   assert.equal(lector.decodificar('x'.repeat(4_000_001)).error, MENSAJE_LARGO);
 });
 
+test('el nombre de la panadería en la bolsa queda literal y no se vuelve HTML', () => {
+  const nombre = "$&$'$$<img src=x onerror=alert(1)>";
+  const bienes = Array.from({ length: 18 }, () => '100:1:-26:9:4:0:1:250').join('!');
+  const minijuego = `2:3:1:0:0: ${bienes}! 0`;
+  const vacio = '1,1,1,1,,0,1';
+  const plano = [
+    '2.053',
+    '',
+    `1;2;3;${nombre};seed;0`,
+    '1',
+    '10;20',
+    [vacio, vacio, vacio, vacio, vacio, `1,1,1,4,${minijuego},0,1`].join(';'),
+    '11',
+    '1',
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  const propio = resultado.datos.minijuegos.bolsa.bienes[17];
+  assert.equal(propio.nombre, nombre);
+  assert.equal(propio.empresa, `Panadería de ${nombre}`);
+  assert.equal(resultado.datos.minijuegos.bolsa.bienes[0].nombre, 'Cereales');
+  const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
+  assert.equal(html.includes('<img'), false);
+  assert.ok(html.includes('$&amp;$&#39;$$&lt;img src=x onerror=alert(1)&gt;'));
+  const tabla = armarExportacion(resultado.datos).secciones.find((seccion) => seccion.id === 'bolsa');
+  assert.equal(tabla.tabla.filas[17].nombre, nombre);
+  assert.equal(tabla.tabla.filas[17].empresa, `Panadería de ${nombre}`);
+});
+
 test('un minijuego con forma rara avisa y uno vacío no inventa datos', () => {
   const jardin = [
     '1000:9:2000:1:3:4:1:2:3000:',
