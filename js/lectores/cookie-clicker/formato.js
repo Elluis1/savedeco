@@ -4,6 +4,7 @@
 // pack3() hoy devuelve el bitfield tal cual; las versiones viejas usan unpack2 o unpack.
 
 import { edificios, logros, mejoras } from './catalogo.js';
+import { detalleMinijuego, leerMinijuegos, panelesMinijuegos, seccionesMinijuegos } from './minijuegos.js';
 import { LIMITE_CODIGO, MENSAJE_LARGO } from '../../nucleo/decodificar.js';
 import { formatearFotogramas } from '../../nucleo/numeros.js';
 
@@ -294,13 +295,18 @@ function leerEdificio(entrada, version) {
   if (version < 2.003) nivel = 0;
   let silenciado = 0;
   let maximo = cantidad;
+  // El minijuego es el quinto campo. Desde la 2.024, silenciado y máximo van al
+  // final: si el quinto campo trajera comas, el medio es el minijuego.
+  let minijuegoCrudo = '';
   if (version >= 2.024 && partes.length >= 7) {
     maximo = numero(partes[partes.length - 1], true);
     silenciado = numero(partes[partes.length - 2], true) ? 1 : 0;
+    minijuegoCrudo = partes.slice(4, -2).join(',');
   } else if (partes.length >= 6) {
     silenciado = numero(partes[5], true) ? 1 : 0;
+    minijuegoCrudo = partes[4] || '';
   }
-  return { cantidad, comprados, galletasProducidas, nivel, silenciado, maximo };
+  return { cantidad, comprados, galletasProducidas, nivel, silenciado, maximo, minijuegoCrudo };
 }
 
 function nombreEdificio(indice) {
@@ -628,6 +634,9 @@ function decodificarPlano(texto) {
   if (nombreCrudo.recortado) {
     advertencias.push('El nombre de la panadería es demasiado largo. Muestro solo el principio.');
   }
+  const minijuegosLeidos = leerMinijuegos(edificiosLeidos, nombreCrudo.texto);
+  for (const aviso of minijuegosLeidos.avisos) advertencias.push(aviso);
+  for (const edificio of edificiosLeidos) delete edificio.minijuegoCrudo;
 
   // El índice es el del campo en la sección (54 es el último con nombre). Un hueco
   // vacío no corre la numeración: el #56 sigue siendo el #56.
@@ -669,6 +678,7 @@ function decodificarPlano(texto) {
     tipoTerron: { id: tipoTerronId, nombre: tipoTerron },
     edificios: edificiosLeidos,
     edificiosTotal: edificiosLeidos.reduce((suma, edificio) => suma + edificio.cantidad, 0),
+    minijuegos: minijuegosLeidos.minijuegos,
     mejoras: {
       compradas: compradas.activos,
       desbloqueadas: desbloqueadas.activos,
@@ -751,7 +761,7 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
     items: datos.edificios.map((edificio) => ({
       etiqueta: edificio.nombre,
       valor: edificio.cantidad,
-      detalle: `nivel ${formatear(edificio.nivel)} · comprados ${formatear(edificio.comprados)}`,
+      detalle: `nivel ${formatear(edificio.nivel)} · comprados ${formatear(edificio.comprados)}${detalleMinijuego(minijuegoDe(datos, edificio.indice))}`,
     })),
   };
 
@@ -825,7 +835,16 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
     items: itemsMods,
   };
 
-  return [resumen, panelEdificios, panelProgreso, panelPrestigio, panelMods];
+  return [resumen, panelEdificios, ...panelesMinijuegos(datos.minijuegos, formatear), panelProgreso, panelPrestigio, panelMods];
+}
+
+function minijuegoDe(datos, indice) {
+  const juegos = datos.minijuegos || {};
+  if (indice === 2) return juegos.jardin;
+  if (indice === 5) return juegos.bolsa;
+  if (indice === 6) return juegos.panteon;
+  if (indice === 7) return juegos.grimorio;
+  return null;
 }
 
 function campo(etiqueta, valor, tipo, nota) {
@@ -875,7 +894,7 @@ const NOTAS_COOKIE = [
   'En el resumen, Desbloqueadas cuenta el bit de desbloqueada, compres o no. En la tabla, el estado desbloqueada es la que está a la vista y todavía no se compró. Comprada ya se consiguió. Faltante no tiene ese bit.',
   'El catálogo del lector puede tener nombres que este save no guarda, porque se agregaron en una versión posterior. Esos no figuran como faltantes: el bitfield no los trae.',
   'Las opciones del menú (partículas, sonido, pantalla) viajan en el save y este lector no las lista.',
-  'El minijuego de cada edificio (jardín, bolsa, panteón, grimorio) viaja en el edificio y este lector no lo interpreta.',
+  'El jardín, la bolsa, el panteón y el grimorio se leen del quinto campo del edificio, con la forma que escribe el fuente del juego. Si el texto no coincide, queda sin interpretar.',
   'El fondo, el tipo de leche y las auras del dragón son ids numéricos. El nombre del sprite no está en el save.',
   'El nivel del dragón es el índice de etapa. El título de cada etapa no está en el save.',
   'La apariencia de Tú son índices de genes. El nombre visual de cada opción no está en el save.',
@@ -969,7 +988,7 @@ export function armarExportacion(datos) {
       {
         id: 'edificios',
         titulo: 'Edificios',
-        nota: 'Uno por fila, en el orden del juego. Cantidad es cuántos hay ahora. Comprados incluye los que se vendieron. Máximo es el pico de esta ascensión. Nivel es el de las mejoras de edificio. Galletas producidas es lo que ese edificio horneó, según el save. El minijuego no se interpreta.',
+        nota: 'Uno por fila, en el orden del juego. Cantidad es cuántos hay ahora. Comprados incluye los que se vendieron. Máximo es el pico de esta ascensión. Nivel es el de las mejoras de edificio. Galletas producidas es lo que ese edificio horneó, según el save. El minijuego de la granja, la banca, el templo y la torre mágica está en su propia sección.',
         tabla: {
           columnas: [
             { id: 'indice', etiqueta: 'Id', tipo: 'entero' },
@@ -995,6 +1014,7 @@ export function armarExportacion(datos) {
           })),
         },
       },
+      ...seccionesMinijuegos(datos.minijuegos),
       {
         id: 'logros',
         titulo: 'Logros',

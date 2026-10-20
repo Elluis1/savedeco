@@ -425,7 +425,7 @@ test('un %XX partido por salto o ancho cero sigue siendo la partida', () => {
   }
 });
 
-test('una 2.053 cargada, con minijuegos y la bóveda llena, entra sin aviso', () => {
+test('una 2.053 cargada, con la bóveda llena, entra y el relleno de minijuego solo avisa la forma', () => {
   const minijuego = '1:2:3:'.repeat(120);
   const edificios = Array.from({ length: 20 }, () => `10,20,30,1,${minijuego},0,10`).join(';');
   const misc = Array.from({ length: 55 }, () => '0');
@@ -445,7 +445,14 @@ test('una 2.053 cargada, con minijuegos y la bóveda llena, entra sin aviso', ()
     mods,
   }));
   assert.equal(resultado.ok, true, resultado.error);
-  assert.deepEqual(resultado.advertencias, []);
+  // El relleno `1:2:3:` no es un jardín, una bolsa, un panteón ni un grimorio.
+  // Avisa por eso, y no por la bóveda ni por un número demasiado largo.
+  assert.deepEqual(resultado.advertencias, [
+    'El jardín no tiene la forma que escribe el fuente. Lo dejo sin interpretar.',
+    'La bolsa no tiene la forma que escribe el fuente. Lo dejo sin interpretar.',
+    'El panteón no tiene la forma que escribe el fuente. Lo dejo sin interpretar.',
+    'El grimorio no tiene la forma que escribe el fuente. Lo dejo sin interpretar.',
+  ]);
   assert.equal(resultado.datos.edificios.length, 20);
   assert.equal(resultado.datos.edificios[19].nombre, 'Tú');
   assert.equal(resultado.datos.mejoras.compradas, 875);

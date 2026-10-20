@@ -110,7 +110,7 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 
 Lo que venga después del 54, en una versión más nueva, queda como desconocido y se avisa. El número que muestra la descarga es el índice del campo, aunque haya huecos vacíos en el medio.
 
-Los paneles de esta versión muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, terrones, edificios, logros, mejoras, prestigio, pepitas, ascensiones, modo, nivel del dragón, heraldos, el efecto activo y los mods. La descarga agrega, con el mismo número del save, las doradas perdidas, el fondo, la leche, las auras, la ira de las ancianas, las galletas celestiales y el pico de g/s. El resto de esta tabla sigue sin extraerse.
+Los paneles de esta versión muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, terrones, edificios, los minijuegos, logros, mejoras, prestigio, pepitas, ascensiones, modo, nivel del dragón, heraldos, el efecto activo y los mods. La descarga agrega, con el mismo número del save, las doradas perdidas, el fondo, la leche, las auras, la ira de las ancianas, las galletas celestiales y el pico de g/s. El resto de esta tabla sigue sin extraerse.
 
 Las horneadas en total no son un campo. El juego las muestra como `cookiesEarned + cookiesReset` (está así en el armado de las estadísticas, alrededor de la línea del texto “Cookies baked (all time)”). Hacemos la misma suma.
 
@@ -172,9 +172,61 @@ El orden es el de `new Game.Object`, que no cambió: cada edificio nuevo se agre
 
 Desde la 2.024 cada edificio es `cantidad,comprados,galletas,nivel,minijuego,silenciado,máximo`. `comprados` cuenta también los que se vendieron. `máximo` es el pico de esta ascensión. Antes de la 2.024 no hay máximo y usamos la cantidad. Antes de la 2.003 el nivel se fuerza a 0, como hace `LoadSave`.
 
-El minijuego (jardín, bolsa, panteón, grimorio) va en el quinto campo, con `:`, espacios o `/`. No lo interpretamos. `LoadSave` lee silenciado y máximo en los índices fijos 5 y 6, o sea que asume que el minijuego no trae comas. `WriteSave` los agrega al final. Si ese campo trajera comas, nos quedamos con los dos últimos, que es lo que se escribió. En el ejemplo no hay comas adentro.
+El minijuego (jardín, bolsa, panteón, grimorio) va en el quinto campo, con `:`, espacios o `/`. `LoadSave` lee silenciado y máximo en los índices fijos 5 y 6, o sea que asume que el minijuego no trae comas. `WriteSave` los agrega al final. Si ese campo trajera comas, nos quedamos con los dos últimos, que es lo que se escribió, y el medio es el minijuego. En el ejemplo no hay comas adentro. El detalle de cada string está más abajo.
 
 En la partida de ejemplo hay 20 edificios y 14.023 en total. El Cursor tiene 893 y Tú tiene 452.
+
+## Minijuegos
+
+Cada `M.save` está en el fuente público, revisado el 2026-10-20: `minigameGarden.js`, `minigameMarket.js`, `minigamePantheon.js` y `minigameGrimoire.js` del espejo [ozh/cookieclicker](https://github.com/ozh/cookieclicker). Los nombres salen de `loc/ES.js`. Si la traducción es `/`, queda el inglés. Un texto que no tiene esa forma no se interpreta y se avisa. Un campo vacío es “este edificio no trae minijuego”, sin aviso.
+
+El último número de los cuatro es `1` si el panel estaba abierto al guardar (`parent.onMinigame`).
+
+### Jardín (granja, edificio 2)
+
+`nextStep:suelo:nextSoil:congelado:cosechas:cosechasTotales:abierto:sacrificios:nextFreeze: SEMILLAS PARCELA`
+
+Las tres fechas son milisegundos. `nextStep` es el próximo tick. `nextSoil` es cuándo se puede volver a cambiar el suelo. `nextFreeze` el fuente lo guarda y comenta que no lo usa. `congelado` es 0 o 1. `cosechas` y `cosechasTotales` son las plantas maduras cosechadas: la pantalla las llama “Plantas maduras cosechadas: %1 (total: %2)”. `sacrificios` es `convertTimes`, las veces que se sacrificó el jardín.
+
+`SEMILLAS` es un bit por planta, en el orden de `M.plants`. `1` es desbloqueada. Al cargar, el juego fuerza el trigo de panadero aunque ese bit venga en 0. Acá se muestra el bit del save. El catálogo tiene 34.
+
+`PARCELA` es `id:edad:` seis por seis, fila por fila. El id del save es el de la lista más uno. `0` es un hoyo vacío. La edad va de 0 a 100. La etapa es la de `tileTooltip`: madurez si la edad llega al umbral de esa planta, flor desde los 2/3 de ese umbral (`* 0.666`), brote desde 1/3 (`* 0.333`) y cogollo antes. Esos nombres son `bud`, `sprout`, `bloom` y `mature` en la loc. Qué casilleros están abiertos sale de `plotLimits` y del nivel de la granja. El nivel 0 se lee como 1, igual que `isTileUnlocked`.
+
+Los suelos, en orden: barro, fertilizador, arcilla, guijarros, astillas. “Barro” es la traducción oficial de Dirt.
+
+En el ejemplo el suelo es barro, hay 0 cosechas esta ascensión y 19 en total, 0 sacrificios, y 3 semillas con el bit en 1: trigo de panadero, maíz de pulgar e hierbainsolente. El casillero de la fila 1, columna 4, es hierbainsolente de edad 23 (brote). El de la columna 6 de esa fila tiene edad 51 (madurez). La granja está en nivel 10, así que los 36 casilleros están abiertos.
+
+### Panteón (templo, edificio 6)
+
+`diamante/rubí/jade cambios últimoCambio abierto`
+
+Cada ranura es el id del espíritu, o `-1` si está vacía. `cambios` son los que quedan, de 3. `últimoCambio` es `swapT`, en milisegundos.
+
+Los espíritus, en el orden del fuente: Holobore, Vomitrax, Godzamok, Cyclius, Selebrak, Dotjeiess, Muridal, Jeremy, Mokalsium, Skruuia, Rigidel. El nombre visible es el de la loc (`GOD n NAME`).
+
+En el ejemplo la ranura de diamante está vacía, la de rubí tiene a Vomitrax (id 1) y la de jade a Godzamok (id 2). Quedan 0 cambios. El último fue `1792380656643`.
+
+### Grimorio (torre mágica, edificio 7)
+
+`magia hechizos hechizosTotales abierto`
+
+`magia` es el número guardado. El máximo no viaja en el save: el juego lo recalcula. Los hechizos son los de la pantalla “Hechizos lanzados: %1 (total: %2)”.
+
+En el ejemplo la magia es `3.8853020766158295`, con 12 hechizos esta ascensión y 137 en total.
+
+### Bolsa (banca, edificio 5)
+
+`oficina:brókers:estilo:beneficios:columnas: BIEN!BIEN! abierto`
+
+Cada bien es `valor:modo:deriva:ticks:stock:oculto:operación:previo`. Valor, deriva y previo están multiplicados por 100. Al cargar, el juego divide por 100. El valor es el precio en segundos del mayor g/s crudo, que la pantalla llama “segundos de tu tasa más alta de galletas crudas por segundo”. No son galletas.
+
+El modo es el índice de `['stable','slow rise','slow fall','fast rise','fast fall','chaotic']`, que está comentado en el dibujo del gráfico y el juego no lo muestra. Acá: estable, subida lenta, bajada lenta, subida rápida, bajada rápida, caótico. `ticks` es `dur`, lo que le queda a ese modo. Cada tick dura 60 segundos (`secondsPerTick`). La operación es el comentario de `M.reset`: 0 ninguna, 1 compra, 2 venta, en ese tick.
+
+`estilo` es `graphLines`: 0 dibuja barras y 1 dibuja líneas. `columnas` es `graphCols`: 0 es el fondo blanco de `colBases` y 1 el oscuro. Las oficinas, en orden: taller de crédito, pequeño banco, compañía de préstamos, sede financiera, intercambio internacional, palacio de la codicia.
+
+Los 18 bienes siguen el orden de `M.goods`. El último reemplaza `%1` por el nombre de la panadería. El símbolo es el de la loc (`STOCK n LOGO`).
+
+En el ejemplo la oficina es la compañía de préstamos (id 2), hay 93 brókers y los beneficios están en 0. El gráfico está en líneas y fondo blanco. Cereales vale 29,70 (guardado `2970`), en subida lenta, con 0 en depósito. Frutos secos vale 15,82, en bajada lenta, con deriva -0,26. El bien de la panadería es Elluis, símbolo TÚ, valor 156,76, modo caótico, 496 ticks.
 
 ## Mejoras y logros
 

@@ -2,6 +2,32 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Revisión del PR 6
+
+Revisión independiente de los minijuegos. El string coincide con `M.save` / `M.load` y los nombres, con la loc ES. Una corrección chica en la misma rama:
+
+- El bien de la panadería arma el nombre con `replaceAll`. Si ese nombre traía `$&` o `$'`, el texto del save se deformaba. El reemplazo ahora es literal. En el HTML sigue escapado.
+
+PR: https://github.com/Elluis1/savedeco/pull/6
+
+Próximos pasos: los mismos de la entrada de abajo. El resto de la tabla de estadísticas de Cookie Clicker, y después el lector de Terraria.
+
+## 2026-10-20 — Lectores: minijuegos de Cookie Clicker
+
+Elegí Cookie Clicker y no Terraria. El formato de Terraria ya está en main, pero el lector de Cookie Clicker todavía tenía un avance terminable y verificable: los minijuegos. El string vive en el quinto campo del edificio y `M.save` / `M.load` están en el fuente público (`minigameGarden.js`, `minigameMarket.js`, `minigamePantheon.js`, `minigameGrimoire.js`). La partida de Elluis trae los cuatro, así que los tests afirman valores concretos. Lo que queda de nombres (fondo, leche, auras, etapa del dragón, genes de Tú) y el resto de la tabla de estadísticas no entra en esta corrida: o no está mapeado, o es otro corte.
+
+Qué quedó:
+
+- El jardín (suelo, cosechas, sacrificios, semillas y la parcela con etapa), el panteón (ranuras y cambios de culto), el grimorio (magia y hechizos) y la bolsa (oficina, brókers, beneficios y cada bien).
+- Los nombres salen de la loc oficial en español. El modo de cada bien usa la etiqueta que el fuente tiene comentada en el gráfico y no muestra en pantalla.
+- Un texto que no tiene esa forma se deja sin interpretar y se avisa. Un campo vacío no avisa.
+- La descarga suma esas secciones. Los paneles nuevos son Minijuegos, Jardín y Bolsa.
+- Lo comprobé en el navegador con la partida de Elluis: 16 plantas en el jardín, 18 bienes en la bolsa, Vomitrax en el rubí y Godzamok en el jade.
+
+PR: https://github.com/Elluis1/savedeco/pull/6
+
+Próximos pasos: el resto de la tabla de estadísticas de Cookie Clicker que el formato ya nombra y todavía no se extrae (pactos, devoradores, Papá Noel, renos, bóveda, volúmenes). Después, el lector de Terraria, por bytes, con fixtures sintéticos hasta que aparezca un `.plr` y un `.wld` reales. Sigue pendiente el pedido a Luigi de un save real.
+
 ## 2026-10-20 — Revisión del PR 5
 
 Revisión independiente del formato de Terraria. Correcciones chicas en la misma rama, contra TEdit, el parche de tModLoader 1.4.4, terra-plr 0.3.0 y la wiki:
