@@ -1,6 +1,6 @@
 # Roadmap
 
-Savedeco arranca con Cookie Clicker porque el export está documentado y el fuente es público. Estos son los siguientes candidatos que sí tienen un código de exportación conocido, y lo que todavía falta en el lector actual.
+Savedeco arranca con Cookie Clicker porque el export está documentado y el fuente es público. Terraria es la segunda prioridad: el formato ya está investigado y el lector todavía no. Estos son los candidatos, y lo que todavía falta en el lector actual.
 
 ## Exportar la partida
 
@@ -8,7 +8,27 @@ Ya está en el núcleo, no es un pendiente por juego. Después de leer se bajan 
 
 ## Próximos juegos
 
-En todos los casos el lector sería solo lectura, igual que ahora: descomprimir en el navegador y mostrar paneles. Ninguno de estos formatos está implementado todavía.
+En todos los casos el lector sería solo lectura, igual que ahora: abrir el archivo en el navegador y mostrar paneles. Ninguno de estos formatos está implementado todavía.
+
+### Terraria
+
+Viable para el personaje y para la cabecera del mundo. El lector no está escrito. El detalle, con las fuentes, está en [el formato](FORMATOS/terraria.md).
+
+Qué se puede leer:
+
+- El `.plr` se descifra en el navegador con Web Crypto, AES-CBC de 128 bits y PKCS#7. La clave es `"h3y_gUyZ"` en UTF-16LE, y el IV es la misma clave. El test sintético ya lo hace con `crypto.subtle`.
+- Después del descifrado salen nombre, dificultad, tiempo, vida, maná, equipo, mochila, chanchito, caja fuerte, forja, vacío, spawns y los hitos que el personaje sí guarda.
+- El `.wld` no está cifrado. Con la tabla de punteros se lee la cabecera (nombre, semilla, tamaño, modo, jefes, NPCs rescatados) y se saltea la sección de tiles, que es la pesada.
+
+Riesgos:
+
+- La página hoy lee el archivo como texto y corta a los 4 millones de caracteres. Un `.wld` no sobrevive ese camino. Hay que entrar por bytes y leer solo el rango de la cabecera.
+- Los campos cambian con el release. 1.4.4.9 es el 279. 1.4.5.8 es el 326, y el lector público de personajes que usamos de referencia llega al 318. Un release más nuevo se puede intentar y hay que avisarlo.
+- En el `World.FileV2` actual, 1.4.5.8 sigue con 11 punteros y los tiles en el índice 1. Lo nuevo entró en la cabecera. Si un release posterior mete una sección en el medio, hay que volver a mirar ese archivo.
+- Los nombres de ítems, buffs y prefijos son ids. No hay un catálogo con licencia compatible. La primera versión los muestra como número.
+- Un `.plr` de tModLoader se abre como vanilla y los ítems de mods quedan vacíos. El `.tplr` y el `.twld` son otro formato: se reconocen y se rechazan con un mensaje.
+
+Qué falta para el lector: el camino de bytes en la página, y un `.plr` y un `.wld` reales para probar (esta corrida no consiguió saves con licencia libre). El orden de secciones de la 1.4.5.8 ya está en el formato: 11 punteros, tiles en el índice 1. Los tiles no se parsean.
 
 ### Kittens Game
 
@@ -37,3 +57,9 @@ Universal Paperclips y A Dark Room guardan en `localStorage` y no tienen un cód
 - Hay un test sintético del bitfield empaquetado (versión 2.000) y de la lista con huecos (1.030). Sigue faltando un fixture real de una partida vieja.
 - Una notación en escala larga (billón = 10^12) para quien lea los nombres en español de toda la vida. Hoy la corta sigue al juego a propósito.
 - Si más adelante dos lectores empatan, un selector manual.
+
+## Próxima investigación de formato
+
+Cookie Clicker ya tiene lector. Terraria ya tiene el formato documentado. La próxima corrida de este bot puede investigar un juego nuevo.
+
+El que sigue es **Kittens Game**. El fuente es público, el export es un JSON comprimido con LZString y entra por el mismo gesto de pegar un texto. No pide el camino de bytes que Terraria va a necesitar para implementarse. Trimps queda como alternativa parecida si Kittens ya estuviera escrito.
