@@ -482,6 +482,83 @@ function tarjeta(etiqueta, valor, extra) {
   return item;
 }
 
+const TONO_ETAPA = {
+  Cogollo: 'inicio',
+  Brote: 'medio',
+  Flor: 'alto',
+  Madurez: 'listo',
+};
+
+const PASOS_ETAPA = {
+  Cogollo: 1,
+  Brote: 2,
+  Flor: 3,
+  Madurez: 4,
+};
+
+const LEYENDA_JARDIN = [
+  ['inicio', 'Cogollo'],
+  ['medio', 'Brote'],
+  ['alto', 'Flor'],
+  ['listo', 'Madurez'],
+  ['hueco', 'Hoyo vacío'],
+  ['apagado', 'Cerrado'],
+  ['neutro', 'Sin etapa'],
+];
+
+function celdaJardin(casilla, formatear) {
+  const marca = `${casilla.y + 1}·${casilla.x + 1}`;
+  const lugar = `Fila ${casilla.y + 1}, columna ${casilla.x + 1}`;
+  if (casilla.plantaId == null) {
+    if (!casilla.abierto) {
+      return {
+        titulo: 'Cerrado',
+        tono: 'apagado',
+        marca,
+        etiqueta: `${lugar}. Cerrado: el nivel de la granja todavía no abre este casillero.`,
+      };
+    }
+    return {
+      titulo: 'Hoyo vacío',
+      tono: 'hueco',
+      marca,
+      etiqueta: `${lugar}. Hoyo vacío.`,
+    };
+  }
+  const partes = [];
+  if (casilla.etapa) partes.push(casilla.etapa);
+  if (casilla.edad != null) partes.push(formatear(casilla.edad));
+  if (!casilla.abierto) partes.push('cerrado');
+  const linea = partes.join(' · ');
+  const estado = casilla.abierto ? 'abierto' : 'cerrado';
+  const etapa = casilla.etapa || 'sin etapa';
+  const edad = casilla.edad == null ? 'sin edad' : `edad ${formatear(casilla.edad)}`;
+  return {
+    titulo: casilla.nombre,
+    linea,
+    tono: TONO_ETAPA[casilla.etapa] || 'neutro',
+    pasos: PASOS_ETAPA[casilla.etapa] || 0,
+    pasosTotal: casilla.etapa ? 4 : 0,
+    marca,
+    etiqueta: `${lugar}. ${casilla.nombre}. ${etapa}, ${edad}. Casillero ${estado}.`,
+  };
+}
+
+function notaJardin(jardin, casilleros) {
+  if (!jardin.presente || !jardin.ok) {
+    return jardin.aviso || 'Esta partida no trae datos del jardín.';
+  }
+  const forma = casilleros.length === 36
+    ? 'La grilla es la parcela de 6 por 6, en el orden del save: de izquierda a derecha y de arriba abajo.'
+    : 'La grilla sigue el orden del save: de izquierda a derecha y de arriba abajo, de a 6 casilleros.';
+  const lectura = 'El número de la esquina es fila y columna. Cerrado es el casillero que el nivel de la granja todavía no abre. La etapa sale del corte del fuente y el número de al lado es la edad guardada, de 0 a 100.';
+  const lista = casilleros.some((casilla) => casilla.plantaId != null)
+    ? ' La lista plegada trae solo las plantas.'
+    : '';
+  const nota = `${forma} ${lectura}${lista}`;
+  return jardin.aviso ? `${nota} ${jardin.aviso}` : nota;
+}
+
 export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valor)) {
   const juegos = minijuegos || {};
   const jardin = juegos.jardin || vacio('jardin');
@@ -527,28 +604,39 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
     resumen.push(tarjeta('Beneficios', bolsa.beneficios, 'En segundos del mayor g/s crudo, como los muestra el juego. No son galletas.'));
   }
 
-  const plantadas = (jardin.ok && jardin.presente ? jardin.casilleros : []).filter((casilla) => casilla.plantaId != null);
+  const casilleros = jardin.ok && jardin.presente ? jardin.casilleros : [];
+  const plantadas = casilleros.filter((casilla) => casilla.plantaId != null);
+  const celdas = casilleros.map((casilla) => celdaJardin(casilla, formatear));
+  const tonosUsados = new Set(celdas.map((celda) => celda.tono));
   const panelJardin = {
     id: 'jardin',
-    tipo: 'tabla',
+    tipo: 'mosaico',
     titulo: 'Jardín',
-    nota: jardin.presente && jardin.ok
-      ? 'Cada casillero guardado es id de planta y edad, de 0 a 100. El id del save es el de la lista más uno; el 0 es un hoyo vacío. La etapa sale del corte del fuente: cogollo, brote, flor y madurez. En la página solo van las plantas; los hoyos vacíos están en la descarga.'
-      : (jardin.aviso || 'Esta partida no trae datos del jardín.'),
-    columnas: [
-      { id: 'lugar', etiqueta: 'Lugar' },
-      { id: 'planta', etiqueta: 'Planta' },
-      { id: 'edad', etiqueta: 'Edad' },
-      { id: 'etapa', etiqueta: 'Etapa' },
-      { id: 'casillero', etiqueta: 'Casillero' },
-    ],
-    filas: plantadas.map((casilla) => ({
-      lugar: { texto: `fila ${casilla.y + 1}, columna ${casilla.x + 1}` },
-      planta: { texto: casilla.nombre },
-      edad: { numero: casilla.edad },
-      etapa: { texto: casilla.etapa || '' },
-      casillero: { texto: casilla.abierto ? 'abierto' : 'cerrado' },
-    })),
+    nota: notaJardin(jardin, casilleros),
+    etiqueta: 'Parcela del jardín',
+    columnas: 6,
+    leyenda: LEYENDA_JARDIN
+      .filter(([tono]) => tonosUsados.has(tono))
+      .map(([tono, texto]) => ({ tono, texto })),
+    celdas,
+    vacio: 'Esta partida no trae casilleros del jardín.',
+    detalle: plantadas.length === 0 ? null : {
+      resumen: plantadas.length === 1 ? 'Ver la planta' : `Ver las ${formatear(plantadas.length)} plantas`,
+      columnas: [
+        { id: 'lugar', etiqueta: 'Lugar' },
+        { id: 'planta', etiqueta: 'Planta' },
+        { id: 'edad', etiqueta: 'Edad' },
+        { id: 'etapa', etiqueta: 'Etapa' },
+        { id: 'casillero', etiqueta: 'Casillero' },
+      ],
+      filas: plantadas.map((casilla) => ({
+        lugar: { texto: `fila ${casilla.y + 1}, columna ${casilla.x + 1}` },
+        planta: { texto: casilla.nombre },
+        edad: { numero: casilla.edad },
+        etapa: { texto: casilla.etapa || '' },
+        casillero: { texto: casilla.abierto ? 'abierto' : 'cerrado' },
+      })),
+    },
   };
 
   const panelBolsa = {

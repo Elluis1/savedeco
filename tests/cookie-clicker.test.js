@@ -144,11 +144,24 @@ test('la partida de Elluis se lee con los valores confirmados', () => {
   assert.equal(bolsa.bienes[17].modo.nombre, 'caótico');
   assert.equal(bolsa.bienes[17].ticks, 496);
 
+  const panelJardin = resultado.paneles.find((panel) => panel.id === 'jardin');
+  assert.equal(panelJardin.tipo, 'mosaico');
+  assert.equal(panelJardin.columnas, 6);
+  assert.equal(panelJardin.celdas.length, 36);
+  const celdaHierba = panelJardin.celdas.find((celda) => celda.marca === '1·4');
+  assert.equal(celdaHierba.titulo, 'Hierbainsolente');
+  assert.equal(celdaHierba.tono, 'medio');
+  assert.match(celdaHierba.linea, /^Brote · 23$/);
+  assert.match(celdaHierba.etiqueta, /Fila 1, columna 4/);
+  assert.equal(panelJardin.celdas.some((celda) => celda.titulo === 'Hoyo vacío'), true);
+  assert.equal(panelJardin.celdas.some((celda) => celda.titulo === 'Cerrado'), false);
   const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
+  assert.equal((html.match(/celda-mosaico/g) || []).length, 36);
   assert.ok(html.includes('Hierbainsolente'));
+  assert.ok(html.includes('Hoyo vacío'));
+  assert.ok(html.includes('Ver las 16 plantas'));
   assert.ok(html.includes('Vomitrax, espíritu de la decadencia'));
   assert.ok(html.includes('Cereales'));
-  assert.equal(html.includes('Hoyo vacío'), false);
 
   const documento = armarExportacion(datos);
   const semillas = documento.secciones.find((seccion) => seccion.id === 'semillas');
@@ -364,6 +377,16 @@ test('un minijuego con forma rara avisa y uno vacío no inventa datos', () => {
   assert.equal(datos.minijuegos.jardin.casilleros[0].nombre, 'Trigo de panadero');
   assert.equal(datos.minijuegos.jardin.casilleros[0].etapa, 'Cogollo');
   assert.equal(datos.minijuegos.jardin.casilleros[0].abierto, false);
+  const panelJardin = resultado.paneles.find((panel) => panel.id === 'jardin');
+  assert.equal(panelJardin.celdas.length, 2);
+  assert.equal(panelJardin.celdas[0].titulo, 'Trigo de panadero');
+  assert.equal(panelJardin.celdas[0].tono, 'inicio');
+  assert.match(panelJardin.celdas[0].linea, /Cogollo · 10 · cerrado/);
+  assert.equal(panelJardin.celdas[1].titulo, 'Cerrado');
+  assert.equal(panelJardin.celdas[1].tono, 'apagado');
+  const htmlJardin = renderizarPaneles([panelJardin], (valor) => String(valor));
+  assert.ok(htmlJardin.includes('tono-apagado'));
+  assert.ok(htmlJardin.includes('Cerrado'));
   assert.equal(datos.minijuegos.bolsa.presente, true);
   assert.equal(datos.minijuegos.bolsa.ok, false);
   assert.equal(datos.minijuegos.panteon.presente, false);
