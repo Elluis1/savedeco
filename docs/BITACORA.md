@@ -2,6 +2,34 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Romper
+
+Segunda pasada de casos hostiles. En main no hay lector de Terraria: el formato sigue documentado y el único lector es Cookie Clicker. Esta vez el foco fue lo que entró después de la primera pasada: la descarga, los minijuegos y el mosaico de la parcela. Los casos grandes se arman en memoria, en `tests/romper.test.js`. Los tests viejos siguen.
+
+Qué se rompía:
+
+- Un nombre de panadería que arranca con un espacio unicode (ideográfico, em, ogham) o con un separador de línea (`U+2028`, `U+2029`, `U+0085`) y después un `=` no llevaba el apóstrofo del CSV. Excel lo podía tomar como fórmula. El mismo separador partía una fila del CSV y, en el Markdown, metía un título nuevo en el medio de la partida.
+- El `U+0085` quedaba en el nombre del archivo. No es un carácter de control ASCII, así que el filtro de Windows no lo veía.
+- Una parcela de 37 casilleros se rechazaba con el aviso de "texto demasiado largo", que no es lo que pasaba. Una planta con id inexistente, una edad fuera de 0 a 100 o un nivel de granja negativo se mostraban como si cerraran.
+- En el panteón, cualquier id negativo se veía como ranura vacía. `-2` no es el `-1` del fuente.
+- El grimorio aceptaba magia y hechizos negativos sin avisar. La bolsa hacía lo mismo con un stock negativo, un modo que no existe o una operación que no existe. Cuarenta y un bienes también caían en el aviso de texto largo.
+- Un mosaico de miles de casilleros se dibujaba entero. En la descarga, también. Vacío ya avisaba.
+- Un temporizador de veinte dígitos se leía como "1e18 días".
+
+Qué hace ahora:
+
+- El CSV trata como invisibles los espacios unicode y los separadores de línea, y cita la celda si adentro hay un salto de esos. El Markdown los aplana a un espacio, así que no abren una línea nueva. El nombre del archivo también los saca.
+- Más de 36 casilleros no se interpretan, con un aviso que nombra la parcela de 6 por 6. Una planta desconocida, una edad fuera de rango, un nivel negativo o una cantidad desmedida se muestran y se avisan. En el panteón solo `-1` es ranura vacía.
+- Más de 40 bienes no se leen. Un texto de minijuego de más de 4.000 caracteres (una bolsa de cientos de miles de bienes) se rechaza antes de partirlo.
+- Un mosaico de más de 256 casilleros no se dibuja ni se baja. Uno vacío sigue avisando.
+- Un tiempo que pasa de 10^12 segundos dice "un tiempo desmedido".
+
+Una partida de Elluis no gana avisos nuevos. `NaN` e `Infinity` en un minijuego siguen sin interpretarse. Un `|` en el nombre de la panadería parte el save como lo haría el juego y termina en el error de código truncado, sin excepción.
+
+PR: pendiente
+
+Próximos pasos: el resto de la tabla de estadísticas de Cookie Clicker, y el lector de Terraria cuando haya un camino de bytes y fixtures. Sigue sin haber lector de Terraria en main.
+
 ## 2026-10-20 — Paneles: la parcela del jardín
 
 Diseño de paneles. Antes de elegir miré la página con la partida de Elluis, incluidos los paneles nuevos de Minijuegos, Jardín y Bolsa. El jardín ya traía fila, columna, etapa y si el casillero está abierto, pero en la página era una tabla de las plantas solas. Los hoyos vacíos y los cerrados quedaban solo en la descarga, y no se veía la parcela.

@@ -178,7 +178,7 @@ En la partida de ejemplo hay 20 edificios y 14.023 en total. El Cursor tiene 893
 
 ## Minijuegos
 
-Cada `M.save` está en el fuente público, revisado el 2026-10-20: `minigameGarden.js`, `minigameMarket.js`, `minigamePantheon.js` y `minigameGrimoire.js` del espejo [ozh/cookieclicker](https://github.com/ozh/cookieclicker). Los nombres salen de `loc/ES.js`. Si la traducción es `/`, queda el inglés. Un texto que no tiene esa forma no se interpreta y se avisa. Un campo vacío es “este edificio no trae minijuego”, sin aviso.
+Cada `M.save` está en el fuente público, revisado el 2026-10-20: `minigameGarden.js`, `minigameMarket.js`, `minigamePantheon.js` y `minigameGrimoire.js` del espejo [ozh/cookieclicker](https://github.com/ozh/cookieclicker). Los nombres salen de `loc/ES.js`. Si la traducción es `/`, queda el inglés. Un texto que no tiene esa forma no se interpreta y se avisa. Un campo vacío es “este edificio no trae minijuego”, sin aviso. `NaN`, `Infinity` o un número que no entra en un entero seguro tampoco se interpretan. Una cantidad negativa o desmedida (por encima de 10^12) se muestra y se avisa. El texto de un minijuego de más de 4.000 caracteres no se abre.
 
 El último número de los cuatro es `1` si el panel estaba abierto al guardar (`parent.onMinigame`).
 
@@ -190,7 +190,7 @@ Las tres fechas son milisegundos. `nextStep` es el próximo tick. `nextSoil` es 
 
 `SEMILLAS` es un bit por planta, en el orden de `M.plants`. `1` es desbloqueada. Al cargar, el juego fuerza el trigo de panadero aunque ese bit venga en 0. Acá se muestra el bit del save. El catálogo tiene 34.
 
-`PARCELA` es `id:edad:` seis por seis, fila por fila. El id del save es el de la lista más uno. `0` es un hoyo vacío. La edad va de 0 a 100. La etapa es la de `tileTooltip`: madurez si la edad llega al umbral de esa planta, flor desde los 2/3 de ese umbral (`* 0.666`), brote desde 1/3 (`* 0.333`) y cogollo antes. Esos nombres son `bud`, `sprout`, `bloom` y `mature` en la loc. Qué casilleros están abiertos sale de `plotLimits` y del nivel de la granja. El nivel 0 se lee como 1, igual que `isTileUnlocked`.
+`PARCELA` es `id:edad:` seis por seis, fila por fila. El id del save es el de la lista más uno. `0` es un hoyo vacío. La edad va de 0 a 100. Si vienen menos de 36 casilleros, se leen y se avisa. Si vienen más, no se interpretan: la fila 7 ya no es un casillero del juego. Un id que no está en la lista, o una edad fuera de 0 a 100, se muestra y se avisa. Un nivel de granja negativo se lee como 1 para saber qué casilleros están abiertos, y también se avisa. La etapa es la de `tileTooltip`: madurez si la edad llega al umbral de esa planta, flor desde los 2/3 de ese umbral (`* 0.666`), brote desde 1/3 (`* 0.333`) y cogollo antes. Esos nombres son `bud`, `sprout`, `bloom` y `mature` en la loc. Qué casilleros están abiertos sale de `plotLimits` y del nivel de la granja. El nivel 0 se lee como 1, igual que `isTileUnlocked`.
 
 Los suelos, en orden: barro, fertilizador, arcilla, guijarros, astillas. “Barro” es la traducción oficial de Dirt.
 
@@ -200,7 +200,7 @@ En el ejemplo el suelo es barro, hay 0 cosechas esta ascensión y 19 en total, 0
 
 `diamante/rubí/jade cambios últimoCambio abierto`
 
-Cada ranura es el id del espíritu, o `-1` si está vacía. `cambios` son los que quedan, de 3. `últimoCambio` es `swapT`, en milisegundos.
+Cada ranura es el id del espíritu, o `-1` si está vacía. Otro negativo no es una ranura vacía: se avisa y se muestra como espíritu desconocido. `cambios` son los que quedan, de 3. Si el número cae fuera de 0 a 3, se muestra y se avisa. `últimoCambio` es `swapT`, en milisegundos.
 
 Los espíritus, en el orden del fuente: Holobore, Vomitrax, Godzamok, Cyclius, Selebrak, Dotjeiess, Muridal, Jeremy, Mokalsium, Skruuia, Rigidel. El nombre visible es el de la loc (`GOD n NAME`).
 
@@ -218,7 +218,7 @@ En el ejemplo la magia es `3.8853020766158295`, con 12 hechizos esta ascensión 
 
 `oficina:brókers:estilo:beneficios:columnas: BIEN!BIEN! abierto`
 
-Cada bien es `valor:modo:deriva:ticks:stock:oculto:operación:previo`. Valor, deriva y previo están multiplicados por 100. Al cargar, el juego divide por 100. El valor es el precio en segundos del mayor g/s crudo, que la pantalla llama “segundos de tu tasa más alta de galletas crudas por segundo”. No son galletas.
+Cada bien es `valor:modo:deriva:ticks:stock:oculto:operación:previo`. Más de 40 bienes no se leen. Un modo, una operación o un estilo que no está en la lista se muestra y se avisa, igual que un stock o un precio negativo. Valor, deriva y previo están multiplicados por 100. Al cargar, el juego divide por 100. El valor es el precio en segundos del mayor g/s crudo, que la pantalla llama “segundos de tu tasa más alta de galletas crudas por segundo”. No son galletas.
 
 El modo es el índice de `['stable','slow rise','slow fall','fast rise','fast fall','chaotic']`, que está comentado en el dibujo del gráfico y el juego no lo muestra. Acá: estable, subida lenta, bajada lenta, subida rápida, bajada rápida, caótico. `ticks` es `dur`, lo que le queda a ese modo. Cada tick dura 60 segundos (`secondsPerTick`). La operación es el comentario de `M.reset`: 0 ninguna, 1 compra, 2 venta, en ese tick.
 

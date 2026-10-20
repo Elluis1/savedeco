@@ -102,6 +102,9 @@ export function formatearFotogramas(fotogramas, fps = 30) {
   if (!Number.isFinite(fotogramas)) return 'desconocido';
   if (fotogramas < 0) return 'sin límite';
   const segundos = Math.round(fotogramas / fps);
+  // Un temporizador de miles de años no es una partida: mejor un texto que
+  // "1e18 días", que parece un número roto.
+  if (!Number.isFinite(segundos) || segundos > 1e12) return 'un tiempo desmedido';
   if (segundos <= 0) return '0 s';
   let restante = segundos;
   const partes = [];

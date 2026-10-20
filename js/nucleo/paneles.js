@@ -110,6 +110,14 @@ function panelLista(panel) {
 
 const TONOS_MOSAICO = new Set(['apagado', 'hueco', 'inicio', 'medio', 'alto', 'listo', 'neutro']);
 
+// 12 columnas es el tope del dibujo. 256 casilleros cubren una grilla holgada
+// (el jardín usa 36) y cortan un mosaico de cientos de miles antes de armar el HTML.
+export const MAX_CELDAS_MOSAICO = 256;
+
+function mensajeMosaicoEnorme(cantidad) {
+  return `Esta grilla trae ${cantidad} casilleros. Es demasiado grande para mostrarla.`;
+}
+
 function enteroAcotado(valor, minimo, maximo, porDefecto) {
   const numero = Number(valor);
   if (!Number.isInteger(numero)) return porDefecto;
@@ -134,6 +142,9 @@ function panelMosaico(panel, formatear, formatearFecha) {
   const celdas = Array.isArray(panel.celdas) ? panel.celdas : [];
   if (celdas.length === 0) {
     return `<p class="vacio">${escaparHtml(panel.vacio || 'No hay nada para mostrar.')}</p>`;
+  }
+  if (celdas.length > MAX_CELDAS_MOSAICO) {
+    return `<p class="vacio">${escaparHtml(mensajeMosaicoEnorme(celdas.length))}</p>`;
   }
   const columnas = enteroAcotado(panel.columnas, 1, 12, 1);
   const piezas = celdas.map((celda) => {
@@ -162,9 +173,15 @@ function panelMosaico(panel, formatear, formatearFecha) {
   const bloqueLeyenda = leyenda ? `<ul class="leyenda-mosaico" role="list">${leyenda}</ul>` : '';
   let detalle = '';
   if (panel.detalle?.columnas && Array.isArray(panel.detalle.filas) && panel.detalle.filas.length > 0) {
-    const tabla = panelTabla(panel.detalle, formatear, formatearFecha);
+    const filasDetalle = panel.detalle.filas.length > MAX_CELDAS_MOSAICO
+      ? panel.detalle.filas.slice(0, MAX_CELDAS_MOSAICO)
+      : panel.detalle.filas;
+    const tabla = panelTabla({ ...panel.detalle, filas: filasDetalle }, formatear, formatearFecha);
     const resumen = escaparHtml(panel.detalle.resumen || 'Ver el detalle');
-    detalle = `<details class="detalle-mosaico"><summary>${resumen}</summary>${tabla}</details>`;
+    const corte = panel.detalle.filas.length > MAX_CELDAS_MOSAICO
+      ? `<p class="detalle">Mostré los primeros ${MAX_CELDAS_MOSAICO} de ${panel.detalle.filas.length}.</p>`
+      : '';
+    detalle = `<details class="detalle-mosaico"><summary>${resumen}</summary>${tabla}${corte}</details>`;
   }
   const etiquetaGrilla = escaparHtml(panel.etiqueta || panel.titulo || 'Grilla');
   return `<div class="tablero-mosaico">

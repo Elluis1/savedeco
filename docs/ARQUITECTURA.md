@@ -41,10 +41,10 @@ El armado vive en `js/nucleo/exportar.js`. El núcleo no conoce juegos. Le pide 
 El documento tiene `titulo` (entra en el nombre del archivo), `juego`, `version`, `notas` y `secciones`. Cada sección trae `campos` (texto, entero, número o fecha, con una nota de qué es) y, si hace falta, una `tabla`. El núcleo escribe tres archivos:
 
 - Un `.txt` en Markdown, para pegarlo o adjuntarlo a una IA. Los números grandes van legibles y también exactos.
-- Un `.csv` con BOM UTF-8, separador `;` y salto de línea de Windows, para el Excel en español. Cada sección es un bloque con su encabezado. Un texto que arranca con `=`, `+`, `-` o `@` lleva un apóstrofo para que Excel no lo ejecute, también si antes hay espacios o caracteres invisibles.
+- Un `.csv` con BOM UTF-8, separador `;` y salto de línea de Windows, para el Excel en español. Cada sección es un bloque con su encabezado. Un texto que arranca con `=`, `+`, `-` o `@` lleva un apóstrofo para que Excel no lo ejecute, también si antes hay espacios (de cualquier ancho), separadores de línea o caracteres invisibles.
 - Un `.json` con los mismos datos. Un número o una fecha es `{ valor, legible, exacto }`.
 
-El nombre del archivo usa el título del lector y el día UTC, sin los caracteres que Windows rechaza (`\ / : * ? " < > |` y los de control) y sin los invisibles que disfrazan la extensión. En Cookie Clicker el título es la panadería.
+El nombre del archivo usa el título del lector y el día UTC, sin los caracteres que Windows rechaza (`\ / : * ? " < > |` y los de control) y sin los invisibles que disfrazan la extensión o parten el nombre (ancho cero, marcas de dirección, separadores de línea unicode). En Cookie Clicker el título es la panadería.
 
 Un número que no entra en un entero seguro se escribe en notación científica con punto decimal. Es el float del save: el juego no guarda más precisión. El tope de cada archivo es el mismo que el del código de entrada, 4 millones de caracteres. Si se pasa, el archivo se corta y lo dice.
 
@@ -85,7 +85,7 @@ export const lector = {
 
 Los `tipo` que el núcleo ya dibuja son `tarjetas`, `barras`, `progreso`, `lista`, `tabla` y `mosaico`. Cada ítem puede traer `texto`, `numero` o `fecha`. Los números los formatea la página, así el cambio de notación no exige otro parseo.
 
-El mosaico es una grilla de casilleros. No sabe de ningún juego: recibe columnas, un tono de una lista corta (`apagado`, `hueco`, `inicio`, `medio`, `alto`, `listo`, `neutro`) y, en cada celda, título, línea, marca y una etiqueta para el lector de pantalla. Un tono que no esté en esa lista se dibuja como `neutro`. El jardín de Cookie Clicker lo usa para la parcela. Si el panel trae `detalle`, debajo se puede plegar una tabla.
+El mosaico es una grilla de casilleros. No sabe de ningún juego: recibe columnas, un tono de una lista corta (`apagado`, `hueco`, `inicio`, `medio`, `alto`, `listo`, `neutro`) y, en cada celda, título, línea, marca y una etiqueta para el lector de pantalla. Un tono que no esté en esa lista se dibuja como `neutro`. El jardín de Cookie Clicker lo usa para la parcela. Si el panel trae `detalle`, debajo se puede plegar una tabla. Más de 256 casilleros no se dibujan ni se bajan: se avisa que la grilla es demasiado grande. Una grilla vacía también avisa, sin inventar casilleros.
 
 Lo que no puedas confirmar del formato, dejalo como desconocido y anotalo en `docs/FORMATOS/`. Mejor un hueco honesto que un campo inventado.
 
