@@ -7,7 +7,7 @@ Esta nota no implementa el lector. Describe lo que se pudo confirmar para leer e
 Fuentes usadas el 2026-10-20:
 
 - Parche público de tModLoader 1.4.4 sobre `Player.Save` / `Player.Load`: la clave, el cifrado al guardar y el orden de las ranuras de esa versión. El parche mezcla código de tModLoader (MIT) con el fuente del juego, que es de Re-Logic. Acá se describe el comportamiento. No se copia el código. [Player.cs.patch, rama 1.4.4](https://github.com/shikozz/tModLoader_exampleMod/blob/1.4.4/patches/tModLoader/Terraria/Player.cs.patch).
-- [terra-plr 0.3.0](https://gitlab.com/terra-conv/terra-plr) (AGPL-3.0-or-later), publicado el 2026-02-14. Lee personajes de release 0 a 318. Es el que tiene los `if version >= N`. También tiene errores de ida y vuelta; están marcados abajo. No vendemos ese código.
+- [terra-plr 0.3.0](https://gitlab.com/terra-conv/terra-plr) (AGPL-3.0-or-later), publicado el 2026-02-14. Lee personajes de release 0 a 318 (`SUPPORTED_VERSIONS` en [`player.rs`](https://docs.rs/terra-plr/latest/src/terra_plr/player.rs.html)). Es el que tiene los `if version >= N`, y la clave está hardcodeada ahí. También tiene errores de ida y vuelta; están marcados abajo. No copiamos ese código al repo. El orden de escritura está en [`write.rs`](https://docs.rs/terra-plr/latest/src/terra_plr/player/write.rs.html) y el de lectura en [`read.rs`](https://docs.rs/terra-plr/latest/src/terra_plr/player/read.rs.html).
 - [TerraFirma, formato de mundo](https://seancode.com/terrafirma/world.html). Cabecera del `.wld` campo por campo, con el release mínimo de cada uno. La tabla corta cerca del release 227.
 - [Documentación del `.wld` 1.3](http://ludwig.schafer.free.fr/) de Ludwig Schäfer. Magic, tipo de archivo y punteros de esa época.
 - [terraria-world 1.0.8](https://crates.io/crates/terraria-world/1.0.8) / [osbm.dev](https://osbm.dev/terraria-world-rs/terraria-world-file.html). Once punteros en un mundo 1.4.4.9 y un ejemplo de RLE. El byte de tipo de archivo que publican (0) no coincide con las otras fuentes. Quedó anotado.
@@ -15,6 +15,8 @@ Fuentes usadas el 2026-10-20:
 - Wiki oficial: [personaje](https://terraria.wiki.gg/wiki/Player), [mundo](https://terraria.wiki.gg/wiki/World), [tamaño](https://terraria.wiki.gg/wiki/World_size), [historial de PC](https://terraria.wiki.gg/wiki/Desktop_version_history). El texto de la wiki es [CC BY-NC-SA 3.0](https://terraria.wiki.gg/wiki/Terraria_Wiki:Copyrights). Sirve para citar tamaños y límites. No sirve para copiar la lista de ítems al repo.
 - [TagIO de tModLoader 1.3](https://docs.tmodloader.net/docs/1.3/class_terraria_1_1_mod_loader_1_1_i_o_1_1_tag_i_o.html) y la [wiki de TagCompound](https://github.com/tModLoader/tModLoader/wiki/Saving-and-loading-using-TagCompound). Archivos `.tplr` y `.twld`.
 - [RijndaelManaged](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.rijndaelmanaged.padding) (padding PKCS7, modo CBC y bloque de 128 por defecto) y [AES-CBC en Web Crypto](https://www.w3.org/TR/WebCryptoAPI/#aes-cbc-operations).
+- [Kaitai del `.plr` para el release 234](https://gist.github.com/iconmaster5326/3c723eba0b0ebfc41f85f6b1cc00df91). Después del release lee 8 bytes de un saque (se come el magic) y dice "sin padding". Sirve para las cantidades de ranuras de esa versión. No para los offsets.
+- Wiki de cofres, historial de la 1.4.0.1: el tope de cofres colocados pasó de 1000 a 8000. [Chests, fandom](https://terraria.fandom.com/wiki/Chests). TEdit deja el mismo 8000 en `DefaultMaxChests` de [`WorldConfiguration.cs`](https://github.com/TEdit/Terraria-Map-Editor/blob/main/src/TEdit.Terraria/WorldConfiguration.cs).
 - El test `tests/terraria-cifrado.test.js` cifra y descifra un `.plr` mínimo con `globalThis.crypto.subtle`. No hay un save real con licencia libre en el repo.
 
 El número que viaja en el archivo no es `1.4.4.9`. Es un entero, el release. En el fuente es `Main.curRelease`. TEdit lo llama save version. Abajo, "release" es ese entero.
@@ -70,7 +72,7 @@ TEdit publica el mapa. A partir de 1.2 el número sube con el juego. En 1.0 y 1.
 | 1.4.3.6 | 248 |
 | 1.4.4 | 269 |
 | 1.4.4.9 | 279 |
-| 1.4.5.0 y 1.4.5.2 | 315 |
+| 1.4.5.0, 1.4.5.1 y 1.4.5.2 | 315 |
 | 1.4.5.5 | 318 |
 | 1.4.5.6 | 319 |
 | 1.4.5.8 | 326 |
@@ -93,13 +95,13 @@ El parche de tModLoader 1.4.4 deja la clave del juego a la vista:
 68 00 33 00 79 00 5F 00 67 00 55 00 79 00 5A 00
 ```
 
-Esos mismos bytes publica el hilo de Reddit que descifra el archivo a mano, y los tiene hardcodeados terra-plr. Al guardar, el parche llama a `CreateEncryptor(ENCRYPTION_KEY, ENCRYPTION_KEY)`: la clave y el IV son el mismo arreglo.
+terra-plr hardcodea ese mismo arreglo de 16 bytes como `PLAYER_ENCRYPTION_KEY`. Al guardar, el parche llama a `CreateEncryptor(ENCRYPTION_KEY, ENCRYPTION_KEY)`: la clave y el IV son el mismo arreglo.
 
 `RijndaelManaged` recién construido usa, por documentación de Microsoft, modo CBC, bloque de 128 bits y padding PKCS7. Con bloque de 128 y clave de 16 bytes, ese Rijndael es AES-128. Web Crypto solo implementa el bloque de 128, así que esta combinación entra.
 
 Al cargar, el mismo parche hace `rijndaelManaged.Padding = PaddingMode.None` antes de descifrar. El juego no le saca el relleno: lee los campos y el resto del bloque le sobra. En disco, el archivo que escribió el guardado sí trae PKCS7, porque el guardado no cambia el padding.
 
-Un gist de Kaitai dice "sin padding". Describe la carga, no los bytes del archivo. Si se cifra de nuevo sin padding, el juego lo abre (la carga no revisa el relleno) y Web Crypto lo rechaza.
+El Kaitai del release 234 dice "sin padding". Describe la carga, no los bytes del archivo. Si se cifra de nuevo sin padding, el juego lo abre (la carga no revisa el relleno) y Web Crypto lo rechaza.
 
 ### Web Crypto
 
@@ -121,7 +123,7 @@ Un personaje es chico al lado de un mundo. Las ranuras son fijas. Lo variable so
 
 El primer Int32 es el release.
 
-Si el release pasa el corte, siguen 7 bytes de magic, un byte de tipo, un UInt32 de revisión y un Int64 de favorito (0 o 1). El magic de escritorio es `relogic`. TEdit, en un mundo, también acepta `xindong`: es la cabecera china, y la detecta si el primer carácter es `x`. Los dos miden 7 bytes. No vimos un `.plr` chino, así que en el personaje el único magic confirmado es `relogic`.
+Si el release pasa el corte, siguen 7 bytes de magic, un byte de tipo, 4 bytes de revisión y 8 de favorito. TEdit lee la revisión como UInt32 y el favorito como UInt64 de bitflags; hoy solo usa el bit bajo. terra-plr, en el personaje, escribe los dos como enteros con signo (`Int32` en cero, que comenta como "times saved" sin usar, e `Int64` de favorito). En disco son los mismos anchos, y el favorito que escriben las dos fuentes es 0 o 1. El magic de escritorio es `relogic`. TEdit, en un mundo, también acepta `xindong` (`ChineseHeader` en `WorldConfiguration`): es la cabecera china, y la detecta si el primer carácter es `x`. Los dos miden 7 bytes. No vimos un `.plr` chino, así que en el personaje el único magic confirmado es `relogic`.
 
 El corte no es el mismo en las dos fuentes. terra-plr lee el bloque del personaje desde el release 135. TEdit lo lee en el mundo desde el 140, y el comentario del código dice `// 135`. 135 y 140 caen entre 1.2.4.1 (102) y 1.3.0.1 (146). No hay un juego público en el medio. Un 1.2 no trae este bloque. Un 1.3 o un 1.4 sí.
 
@@ -139,7 +141,7 @@ Un ítem de ranura completa es Int32 id, Int32 cantidad, byte de prefijo. El pre
 
 Una ranura de equipo (armadura, vanidad, tinte, mascota) es Int32 id y byte de prefijo, sin cantidad.
 
-El favorito de la mochila es un byte extra desde el release 114.
+El favorito de la mochila, desde el release 114, es un byte pegado al prefijo de esa ranura. Inventario, monedas y munición lo llevan cada uno. No hay una lista de favoritos al final del bloque.
 
 ### Identidad
 
@@ -174,7 +176,7 @@ Después vienen siete colores, siempre, en este orden: pelo, piel, ojos, remera,
 
 ### Equipo, mochila y baúles
 
-El bloque de arriba es el equipo puesto. Desde el release 262, al final del archivo se repiten los tres loadouts de 1.4.4 y un Int32 con el índice elegido. terra-plr intercambia el elegido con el bloque de arriba.
+El bloque de arriba es el equipo puesto. Desde el release 262, después de la vagoneta suprema, va un Int32 con el índice elegido y después los tres loadouts de 1.4.4. En un 1.4.4.9 (release 279) eso cierra el archivo. Desde el 280 siguen la voz y el resto de la tabla de abajo. terra-plr intercambia el elegido con el bloque de arriba.
 
 Equipo puesto, cada pieza id + prefijo:
 
@@ -196,7 +198,16 @@ Mochila:
 | Inventario | siempre | 4 filas de 10 hasta el release 57, 5 filas de 10 desde el 58. Con monedas y munición, el 1.4.4 escribe 58. |
 | Monedas | siempre | 4 |
 | Munición | 15 | 4 |
-| Favorito | 114 | Un byte por ranura de inventario, monedas y munición |
+| Favorito | 114 | Un byte después del prefijo de cada ranura de inventario, de monedas y de munición. |
+
+Entre la munición y el chanchito van las ranuras sueltas. Cada pieza es id y prefijo, y el tinte va enseguida, en el mismo par. El parche de 1.4.4 las escribe en el loop de `miscEquips` y `miscDyes`. Las compuertas son de terra-plr:
+
+| Pieza | Desde |
+| --- | --- |
+| Mascota y su tinte | 136 |
+| Luz, vagoneta, montura y gancho, cada una con su tinte, en ese orden | 117 |
+
+Si el release es 136 o más, la mascota va primera. Entre 117 y 135 esas cuatro están y la mascota no. En 1.4.4 son cinco pares. El Kaitai del 234 también cuenta `5 * 2` ranuras acá, después de las 58 de la mochila.
 
 Baúles portátiles. Cada ranura es id, cantidad y prefijo, sin favorito, salvo la bóveda:
 
@@ -205,7 +216,7 @@ Baúles portátiles. Cada ranura es id, cantidad y prefijo, sin favorito, salvo 
 | Chanchito | `bank` | siempre | 4 filas. 5 columnas hasta el release 57, 10 desde el 58. En 1.4.4 son 40. |
 | Caja fuerte | `bank2` | 20 | Igual |
 | Forja del Defensor | `bank3` | 182 | Igual. 182 cae justo antes del 1.3.4 público (184), que es cuando salió la forja. |
-| Bóveda del vacío | `bank4` | 198 las ranuras, 199 el byte de info | 40 ranuras. El favorito de cada una entra desde el 255. Después va un byte, `voidVaultInfo`. terra-plr lo lee como "desbloqueada" si no es cero. Puede ser un BitsByte: el significado de cada bit queda sin abrir. |
+| Bóveda del vacío | `bank4` | 198 las ranuras, 199 el byte de info | 40 ranuras. Desde el 255, el favorito va pegado al prefijo de cada una, igual que en la mochila. Después de las 40 va un byte, `voidVaultInfo`. terra-plr lo lee como "desbloqueada" si no es cero y, al escribir, manda 0 o 1. El campo del juego puede ser un BitsByte: el significado de cada bit queda sin abrir. |
 
 198 y 199 caen antes del 1.4.0.1 público (225). Un personaje 1.4 ya trae la bóveda.
 
@@ -220,7 +231,7 @@ Spawns: se repite Int32 x. Si es -1, se acaba la lista. Si no, siguen Int32 y, I
 | Barra de acceso bloqueada | 16 | Bool. |
 | Info en pantalla | 115 | 13 bools. El noveno lo descarta terra-plr ("sin uso"). El sentido de cada bool está invertido en ese lector (`true` en el archivo significa oculto). Después, Int32 de misiones del pescador. |
 | Atajos de la cruceta | 164 | Cuatro Int32: arriba, derecha, abajo, izquierda. -1 es vacío. |
-| Toggles del constructor | 164, y más en 167, 197 y 230 | Varios Int32. 0 significa prendido, según terra-plr. El tercer y el cuarto los escribe dos veces con el mismo flag de pintura automática, y el struct tiene otro flag de actuadores que esa escritura no llena. El orden fino queda a confirmar con un save. No vale un panel de "regla prendida" todavía. |
+| Toggles del constructor | 164, y más en 167, 197 y 230 | Int32, en el orden de `read.rs` de terra-plr. En los que son un sí o un no, 0 es prendido. Desde el 164: regla, regla mecánica, pintura automática, otra vez pintura automática (pisa el mismo flag; el de colocar actuadores queda sin llenar), y la visibilidad del cable rojo, azul, verde y amarillo. Esa visibilidad no es un sí o un no: 0 brillante, 1 tenue, 2 clásico (`Visibility`). Desde el 167: mostrar cables y actuadores siempre, y la visibilidad de los actuadores. Desde el 197: reemplazo de bloques. Desde el 230: antorchas de bioma, que es el valor que el juego usa. No hay un `.plr` real en el repo para contrastar este orden. No vale un panel de "regla prendida" todavía. |
 | Habló con el tabernero | 181 | Int32, 1 es sí. |
 | Muerto, y timer de respawn | 200 | Un bool. Si está muerto, un Int32 de ticks a 60 por segundo. |
 | Fecha del último guardado | 202 | Int64 de `DateTime.ToBinary` de .NET. No es un unix. La conversión está en la documentación de .NET. |
@@ -254,7 +265,7 @@ No está cifrado. Se puede mirar el principio sin tocar AES.
 
 Ludwig, para 1.3, cuenta 10 punteros y marca los últimos como sin uso. terraria-world, para 1.4.4.9, cuenta 11. TEdit hace lo mismo: 10 antes del release 220, 11 desde ahí. El número sale del archivo. No se hardcodea.
 
-Con los once punteros de un 1.4 (release 220 o más), el orden de TEdit es el mismo que publica terraria-world:
+Con los once punteros de un 1.4 (release 220 o más), el orden de TEdit es este. terraria-world lista las mismas secciones: el encabezado de archivo es su sección 1 y el pie es la 12.
 
 | Índice | Sección |
 | --- | --- |
@@ -270,7 +281,9 @@ Con los once punteros de un 1.4 (release 220 o más), el orden de TEdit es el mi
 | 9 | Poderes de viaje |
 | 10 | Pie |
 
-Ese orden es el de `SaveV2` en el `World.FileV2` que hoy lee la 1.4.5.8. 1.4.5 no agregó un puntero: sigue en 11, y el índice 1 sigue siendo tiles. Lo nuevo de esa versión entró en la cabecera. Si un release posterior mete una sección en el medio, los índices se corren. El salto seguro sigue siendo el puntero: el tamaño de cada sección es `puntero[i + 1] - puntero[i]`.
+Ese orden es el de `SaveV2` en el `World.FileV2` que hoy lee la 1.4.5.8. 1.4.5 no agregó un puntero: sigue en 11, y el índice 1 sigue siendo tiles. Lo nuevo de esa versión entró en la cabecera. Si un release posterior mete una sección en el medio, los índices se corren. El salto seguro sigue siendo el puntero: el tamaño de cada sección, menos la última, es `puntero[i + 1] - puntero[i]`. El pie (índice 10) no tiene puntero siguiente y termina en el fin del archivo.
+
+terraria-world numera el encabezado de archivo como sección 1 y el pie como sección 12. En esta tabla el pie es el puntero 10. Los poderes de viaje son el 9.
 
 El pie no es un duodécimo puntero. En un archivo de 11, el puntero 10 apunta al byte donde empieza. TEdit lo lee así: un bool que tiene que ser verdadero, el nombre del mundo otra vez, y el Int32 del id. Si el nombre o el id no coinciden con la cabecera, el archivo está cortado o mal leído. Ludwig decía que el pie existía y no lo describía. terraria-world decía nombre e id, sin el bool.
 
@@ -328,7 +341,7 @@ Para un 1.2 o más nuevo, TEdit lee sin volver a preguntar la versión: luna, á
 | Fiesta | 170 | Dos bools, Int32 de cooldown, Int32 de cantidad y un Int32 por NPC. |
 | Tormenta de arena | 174 | Bool, Int32, dos Single. |
 | Tabernero y Ejército del Viejo | 178 | Cuatro bools. |
-| Fondos de 1.4 | 195, 215, 196 | Un byte de hongos si el release es mayor a 194. Un byte de inframundo desde el 215. Tres bytes más de árbol desde el 195. |
+| Fondos de 1.4 | mayor a 194, 215, 195 | Un byte de hongos si el release es mayor a 194. Un byte de inframundo desde el 215. Tres bytes más de árbol desde el 195. TerraFirma pone esos tres en el 196; seguimos a TEdit, que los lee desde el 195. |
 | Libro de combate | 204 | Bool. |
 | Noche de faroles | 207 | Int32 y tres bools. |
 | Copas de los árboles | 211 | Int32 de cantidad y un Int32 por cada una. TEdit espera al menos 13 al guardar, pero lee la cantidad que diga el archivo. |
@@ -373,7 +386,7 @@ Un mediano creado por el servidor con `autocreate` mide 6300 de ancho, no 6400. 
 
 No medimos `.wld` reales en esta corrida. La cota de arriba, si cada tile costara 13 bytes, es del orden de 65 MB en un chico y 260 MB en un grande. Con RLE baja mucho. Un hilo público describe un mundo jugado de unos 10 MB, y el zip de ese archivo en unos 4 MB. Es un caso, no una tabla chico/mediano/grande. El puntero de la sección de tiles da el tamaño real sin parsearla.
 
-Cofres, carteles, NPCs, bestiario y casas son chicos al lado de los tiles. Igual llevan tope: TEdit llegó a subir el límite de cofres de 1000 a 8000. Un Int16 de cantidad disparatado se rechaza. Los poderes de viaje del mundo los carga TEdit en `CreativePowers.Load`. El formato de esa clase no lo abrimos campo por campo. Se saltean con el puntero.
+Cofres, carteles, NPCs, bestiario y casas son chicos al lado de los tiles. Igual llevan tope: en la 1.4.0.1 el juego subió el límite de cofres colocados de 1000 a 8000, y `DefaultMaxChests` de TEdit quedó en 8000. Un Int16 de cantidad disparatado se rechaza. Los poderes de viaje del mundo los carga TEdit en `CreativePowers.Load`. El formato de esa clase no lo abrimos campo por campo. Se saltean con el puntero.
 
 Para una notebook, el camino barato es leer hasta el fin de la cabecera del mundo (el offset del primer puntero de tiles) y reportar el tamaño de las otras secciones. No hace falta cargar el archivo entero: con el principio alcanza para leer los punteros, y después se pide solo el rango de la cabecera. El `FileReader.readAsText` de la página de hoy no sirve. Un `.wld` pasado por `String()` se rompe, y el tope de 4 millones de caracteres rechaza un mundo mediano. El lector futuro tiene que entrar por `ArrayBuffer` y por rangos.
 
@@ -451,7 +464,7 @@ Los ids numéricos no traen el texto. De dónde sacarlo:
 | --- | --- | --- |
 | Wiki oficial, páginas de ids | CC BY-NC-SA 3.0, y el contenido del juego es de Re-Logic | Para mirar. No para copiar la tabla al repo: el NC no entra en un proyecto que no controle el uso, y el texto de la wiki obliga a compartir igual. |
 | `ItemID` / `BuffID` dentro de tModLoader | El loader es MIT. Esas constantes son nombres del juego, decompilados | No las copiamos. |
-| `items.json` y compañía en TEdit | GPL-3.0 | Citar un id suelto está bien. Vendorear el JSON nos dejaría el lector bajo GPL. No va. |
+| `items.json` y compañía en TEdit | GPL-3.0 | Citar un id suelto está bien. Copiar el JSON al repo nos dejaría el lector bajo GPL. No va. |
 | Nombres internos en el propio save | Los escribe el juego en la investigación y en el bestiario | Se pueden mostrar crudos, como "IronPickaxe", sin traducir. |
 
 Pendiente: un catálogo chico, escrito a mano, de los ids que más se ven (minerales, armas de progresión, buffs de poción), o mostrar el número y listo. Los nombres en español salen de la localización del juego, que también es de Re-Logic. Mismo pendiente.

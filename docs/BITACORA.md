@@ -2,6 +2,20 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Revisión del PR 5
+
+Revisión independiente del formato de Terraria. Correcciones chicas en la misma rama, contra TEdit, el parche de tModLoader 1.4.4, terra-plr 0.3.0 y la wiki:
+
+- Entre la munición y el chanchito faltaban las ranuras sueltas (mascota, luz, vagoneta, montura y gancho, cada una con su tinte). Sin eso, un lector se desfasaba después de la mochila.
+- El favorito de la mochila y el de la bóveda van pegados al prefijo de cada ranura. Quedó escrito así para que no se lean como una lista al final.
+- Los toggles del constructor quedaron en el orden de `read.rs` de terra-plr. La visibilidad de los cables es 0 brillante, 1 tenue, 2 clásico.
+- El release 315 también es el de la 1.4.5.1. Los tres bytes extra de árbol los lee TEdit desde el 195; TerraFirma dice 196.
+- El pie es el puntero 10 y termina en el fin del archivo. terraria-world lo numera como sección 12.
+- El tope de cofres lo subió el juego en la 1.4.0.1 (de 1000 a 8000). TEdit lo refleja en `DefaultMaxChests`.
+- La clave y el Kaitai quedaron con link. El test ahora traba el PKCS#7 (29 bytes de plano, 32 cifrados), el UTF-16BE y un IV de ceros.
+
+PR: https://github.com/Elluis1/savedeco/pull/5
+
 ## 2026-10-20 — Formato de Terraria
 
 Investigador de formatos. No hay lector nuevo: esta corrida deja documentado el save de Terraria, que es la segunda prioridad y no estaba en el roadmap.

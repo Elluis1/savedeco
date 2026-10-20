@@ -52,9 +52,10 @@ test('Web Crypto abre un .plr sintético con AES-CBC y PKCS#7', async () => {
     plano,
   ));
 
-  assert.equal(cifrado.byteLength % 16, 0);
-  assert.ok(cifrado.byteLength > plano.byteLength);
+  // 29 bytes de plano: 13 mod 16, así que PKCS#7 suma 3 y el cifrado mide 32.
+  assert.equal(plano.byteLength, 29);
   assert.equal(plano.byteLength % 16, 13);
+  assert.equal(cifrado.byteLength, 32);
 
   const abierto = new Uint8Array(await globalThis.crypto.subtle.decrypt(
     { name: 'AES-CBC', iv: CLAVE },
@@ -67,6 +68,9 @@ test('Web Crypto abre un .plr sintético con AES-CBC y PKCS#7', async () => {
   assert.equal(view.getInt32(0, true), 279);
   assert.equal(new TextDecoder().decode(abierto.subarray(4, 11)), 'relogic');
   assert.equal(abierto[11], 3);
+  assert.equal(view.getUint32(12, true), 1);
+  assert.equal(view.getBigUint64(16, true), 0n);
+  assert.equal(abierto[24], 3);
   assert.equal(new TextDecoder().decode(abierto.subarray(25, 28)), 'Ada');
 });
 
@@ -74,6 +78,53 @@ test('UTF-8 de la frase no es una clave AES', async () => {
   const utf8 = new TextEncoder().encode('h3y_gUyZ');
   assert.equal(utf8.byteLength, 8);
   await assert.rejects(() => claveAes(utf8, ['decrypt']));
+});
+
+test('UTF-16BE y un IV de ceros no abren el .plr', async () => {
+  const plano = planoMinimo();
+  const clave = await claveAes(CLAVE, ['encrypt', 'decrypt']);
+  const cifrado = await globalThis.crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: CLAVE },
+    clave,
+    plano,
+  );
+
+  const be = new Uint8Array(CLAVE.byteLength);
+  for (let i = 0; i < CLAVE.byteLength; i += 2) {
+    be[i] = CLAVE[i + 1];
+    be[i + 1] = CLAVE[i];
+  }
+  const claveBe = await claveAes(be, ['decrypt']);
+  await assert.rejects(() => globalThis.crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv: be },
+    claveBe,
+    cifrado,
+  ));
+
+  // Un IV equivocado a veces deja un relleno que parece válido. Igual no devuelve el plano.
+  const ivCero = new Uint8Array(16);
+  const conIvCero = new Uint8Array(await globalThis.crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv: ivCero },
+    clave,
+    cifrado,
+  ));
+  assert.notDeepEqual(conIvCero, plano);
+  assert.notEqual(new TextDecoder().decode(conIvCero.subarray(4, 11)), 'relogic');
+});
+
+test('un cifrado que no es múltiplo de 16 no abre', async () => {
+  const plano = planoMinimo();
+  const clave = await claveAes(CLAVE, ['encrypt', 'decrypt']);
+  const cifrado = new Uint8Array(await globalThis.crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: CLAVE },
+    clave,
+    plano,
+  ));
+  await assert.rejects(() => globalThis.crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv: CLAVE },
+    clave,
+    cifrado.subarray(0, 15),
+  ));
 });
 
 test('una clave distinta no abre el .plr', async () => {
