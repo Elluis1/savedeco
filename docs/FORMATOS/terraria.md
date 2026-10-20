@@ -281,9 +281,7 @@ Con los once punteros de un 1.4 (release 220 o más), el orden de TEdit es este.
 | 9 | Poderes de viaje |
 | 10 | Pie |
 
-Ese orden es el de `SaveV2` en el `World.FileV2` que hoy lee la 1.4.5.8. 1.4.5 no agregó un puntero: sigue en 11, y el índice 1 sigue siendo tiles. Lo nuevo de esa versión entró en la cabecera. Si un release posterior mete una sección en el medio, los índices se corren. El salto seguro sigue siendo el puntero: el tamaño de cada sección, menos la última, es `puntero[i + 1] - puntero[i]`. El pie (índice 10) no tiene puntero siguiente y termina en el fin del archivo.
-
-terraria-world numera el encabezado de archivo como sección 1 y el pie como sección 12. En esta tabla el pie es el puntero 10. Los poderes de viaje son el 9.
+Ese orden es el de `SaveV2` en el `World.FileV2` que hoy lee la 1.4.5.8. 1.4.5 no agregó un puntero: sigue en 11, y el índice 1 sigue siendo tiles. Lo nuevo de esa versión entró en la cabecera. Si un release posterior mete una sección en el medio, los índices se corren. El salto seguro sigue siendo el puntero: el tamaño de cada sección, menos la última, es `puntero[i + 1] - puntero[i]`. El pie (índice 10) no tiene puntero siguiente y termina en el fin del archivo. Los poderes de viaje son el índice 9.
 
 El pie no es un duodécimo puntero. En un archivo de 11, el puntero 10 apunta al byte donde empieza. TEdit lo lee así: un bool que tiene que ser verdadero, el nombre del mundo otra vez, y el Int32 del id. Si el nombre o el id no coinciden con la cabecera, el archivo está cortado o mal leído. Ludwig decía que el pie existía y no lo describía. terraria-world decía nombre e id, sin el bool.
 
