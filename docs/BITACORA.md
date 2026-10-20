@@ -12,7 +12,7 @@ Qué quedó:
 - `tests/terraria-cifrado.test.js`. Arma un `.plr` mínimo en memoria y lo abre con `globalThis.crypto.subtle`. No se commiteó un save real: no apareció uno con licencia libre.
 - El roadmap suma la viabilidad de Terraria y deja Kittens Game como el próximo juego a investigar.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/5
 
 Próximos pasos: el lector de Terraria, cuando se encare, entra por bytes y no por el `readAsText` de hoy. Antes hace falta un `.plr` y un `.wld` reales. La próxima investigación de formato es Kittens Game.
 
