@@ -83,7 +83,9 @@ export const lector = {
 };
 ```
 
-Los `tipo` que el núcleo ya dibuja son `tarjetas`, `barras`, `progreso`, `lista` y `tabla`. Cada ítem puede traer `texto`, `numero` o `fecha`. Los números los formatea la página, así el cambio de notación no exige otro parseo.
+Los `tipo` que el núcleo ya dibuja son `tarjetas`, `barras`, `progreso`, `lista`, `tabla` y `mosaico`. Cada ítem puede traer `texto`, `numero` o `fecha`. Los números los formatea la página, así el cambio de notación no exige otro parseo.
+
+El mosaico es una grilla de casilleros. No sabe de ningún juego: recibe columnas, un tono de una lista corta (`apagado`, `hueco`, `inicio`, `medio`, `alto`, `listo`) y, en cada celda, título, línea, marca y una etiqueta para el lector de pantalla. El jardín de Cookie Clicker lo usa para la parcela. Si el panel trae `detalle`, debajo se puede plegar una tabla.
 
 Lo que no puedas confirmar del formato, dejalo como desconocido y anotalo en `docs/FORMATOS/`. Mejor un hueco honesto que un campo inventado.
 

@@ -571,6 +571,21 @@ function documentoDesdePaneles(resultado) {
       }
     } else if (panel.tipo === 'tabla') {
       seccion.tabla = tablaDesde(panel.columnas || [], panel.filas || []);
+    } else if (panel.tipo === 'mosaico') {
+      seccion.tabla = {
+        columnas: [
+          { id: 'marca', etiqueta: 'Marca', tipo: 'texto' },
+          { id: 'titulo', etiqueta: 'Título', tipo: 'texto' },
+          { id: 'linea', etiqueta: 'Detalle', tipo: 'texto' },
+          { id: 'etiqueta', etiqueta: 'Descripción', tipo: 'texto' },
+        ],
+        filas: (Array.isArray(panel.celdas) ? panel.celdas : []).map((celda) => ({
+          marca: celda?.marca ?? '',
+          titulo: celda?.titulo ?? '',
+          linea: celda?.linea ?? '',
+          etiqueta: celda?.etiqueta ?? '',
+        })),
+      };
     } else {
       seccion.campos = (panel.items || []).map((item) => campoDesdeItem(item));
     }

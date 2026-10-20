@@ -1,5 +1,5 @@
 // Componentes genéricos de panel. Reciben datos ya normalizados y devuelven HTML.
-// No saben de ningún juego: solo de tarjetas, barras, tablas, listas y logros.
+// No saben de ningún juego: solo de tarjetas, barras, tablas, listas, logros y mosaicos.
 
 export function escaparHtml(valor) {
   return String(valor ?? '')
@@ -108,6 +108,72 @@ function panelLista(panel) {
   return `<ul class="lista-simple">${filas}</ul>`;
 }
 
+const TONOS_MOSAICO = new Set(['apagado', 'hueco', 'inicio', 'medio', 'alto', 'listo']);
+
+function enteroAcotado(valor, minimo, maximo, porDefecto) {
+  const numero = Number(valor);
+  if (!Number.isInteger(numero)) return porDefecto;
+  return Math.max(minimo, Math.min(maximo, numero));
+}
+
+function tonoMosaico(tono) {
+  return TONOS_MOSAICO.has(tono) ? tono : 'neutro';
+}
+
+function pasosMosaico(celda) {
+  const total = enteroAcotado(celda.pasosTotal, 0, 8, 0);
+  if (total === 0) return '';
+  const activos = enteroAcotado(celda.pasos, 0, total, 0);
+  const marcas = Array.from({ length: total }, (_, indice) => (
+    `<span class="${indice < activos ? 'paso activo' : 'paso'}"></span>`
+  )).join('');
+  return `<span class="pasos" aria-hidden="true">${marcas}</span>`;
+}
+
+function panelMosaico(panel, formatear, formatearFecha) {
+  const celdas = Array.isArray(panel.celdas) ? panel.celdas : [];
+  if (celdas.length === 0) {
+    return `<p class="vacio">${escaparHtml(panel.vacio || 'No hay nada para mostrar.')}</p>`;
+  }
+  const columnas = enteroAcotado(panel.columnas, 1, 12, 1);
+  const piezas = celdas.map((celda) => {
+    if (celda == null || typeof celda !== 'object') {
+      return '<li class="celda-mosaico tono-neutro"><p class="titulo-celda">Vacío</p></li>';
+    }
+    const tono = tonoMosaico(celda.tono);
+    const titulo = escaparHtml(celda.titulo ?? '');
+    const linea = celda.linea ? `<p class="linea-celda">${escaparHtml(celda.linea)}</p>` : '';
+    const marca = celda.marca ? `<span class="marca-celda" aria-hidden="true">${escaparHtml(celda.marca)}</span>` : '';
+    const etiqueta = escaparHtml(celda.etiqueta || celda.titulo || 'Casillero');
+    return `<li class="celda-mosaico tono-${tono}" aria-label="${etiqueta}">
+      ${marca}
+      <p class="titulo-celda">${titulo}</p>
+      ${linea}
+      ${pasosMosaico(celda)}
+    </li>`;
+  }).join('');
+  const leyenda = (Array.isArray(panel.leyenda) ? panel.leyenda : [])
+    .map((item) => {
+      if (item == null || typeof item !== 'object') return '';
+      const tono = tonoMosaico(item.tono);
+      return `<li><span class="muestra tono-${tono}" aria-hidden="true"></span>${escaparHtml(item.texto ?? '')}</li>`;
+    })
+    .join('');
+  const bloqueLeyenda = leyenda ? `<ul class="leyenda-mosaico">${leyenda}</ul>` : '';
+  let detalle = '';
+  if (panel.detalle?.columnas && Array.isArray(panel.detalle.filas) && panel.detalle.filas.length > 0) {
+    const tabla = panelTabla(panel.detalle, formatear, formatearFecha);
+    const resumen = escaparHtml(panel.detalle.resumen || 'Ver el detalle');
+    detalle = `<details class="detalle-mosaico"><summary>${resumen}</summary>${tabla}</details>`;
+  }
+  const etiquetaGrilla = escaparHtml(panel.etiqueta || panel.titulo || 'Grilla');
+  return `<div class="tablero-mosaico">
+    <ul class="mosaico" style="--columnas:${columnas}" aria-label="${etiquetaGrilla}">${piezas}</ul>
+    ${bloqueLeyenda}
+  </div>
+  ${detalle}`;
+}
+
 function panelTabla(panel, formatear, formatearFecha) {
   const columnas = panel.columnas || [];
   const cabeza = columnas.map((columna) => `<th>${escaparHtml(columna.etiqueta || columna.id)}</th>`).join('');
@@ -128,6 +194,7 @@ const RENDER = {
   progreso: panelProgreso,
   lista: panelLista,
   tabla: panelTabla,
+  mosaico: panelMosaico,
 };
 
 function formatearFechaPorDefecto(marca) {

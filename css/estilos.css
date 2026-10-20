@@ -141,7 +141,13 @@ textarea:focus, select:focus, .filtro:focus, .boton:focus-visible {
 .ayuda { margin: 0.8rem 0 0; font-size: 0.92rem; }
 code { color: var(--marca); }
 
-.resultado { margin: 1.25rem 0 2rem; display: grid; gap: 1rem; }
+.resultado {
+  margin: 1.25rem 0 2rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
 
 .alerta {
   padding: 1rem 1.1rem;
@@ -160,7 +166,7 @@ code { color: var(--marca); }
   color: var(--marca);
 }
 
-.panel { padding: 1rem 1rem 1.1rem; }
+.panel { padding: 1rem 1rem 1.1rem; min-width: 0; }
 
 .panel h2, .tarjeta h3, .grupo-progreso h3 {
   margin: 0;
@@ -244,6 +250,120 @@ code { color: var(--marca); }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--linea); vertical-align: top; }
 
+/* Parcela y otras grillas chicas. No usa columns: esa propiedad balancea
+   la altura y, en la lista de logros, ya salió cara. */
+.tablero-mosaico {
+  background: #16130f;
+  border: 1px solid var(--linea);
+  border-radius: 14px;
+  padding: 0.7rem;
+  min-width: 0;
+}
+
+.mosaico {
+  --columnas: 6;
+  display: grid;
+  grid-template-columns: repeat(var(--columnas), minmax(0, 1fr));
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.celda-mosaico {
+  min-height: 5.6rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0.45rem 0.5rem;
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  background: var(--tarjeta);
+}
+
+.marca-celda {
+  color: var(--texto-suave);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.titulo-celda {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.linea-celda {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.pasos {
+  display: flex;
+  gap: 0.22rem;
+  margin-top: auto;
+  padding-top: 0.3rem;
+}
+
+.paso {
+  display: block;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: #3a342c;
+  flex: none;
+}
+
+.paso.activo { background: var(--acento); }
+
+.tono-inicio { background: #243028; border-color: #8fbf9a; }
+.tono-medio { background: #1e3326; border-color: #7dcea0; }
+.tono-alto { background: #2c341c; border-color: #d2d56a; }
+.tono-listo { background: #3a2c18; border-color: #e2a15a; }
+.tono-hueco { background: #1a1814; border-style: dashed; }
+.tono-apagado { background: #141210; border-style: dashed; color: var(--texto-suave); }
+.tono-neutro { background: var(--tarjeta); }
+
+.leyenda-mosaico {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+}
+
+.leyenda-mosaico li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.muestra {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  border: 1px solid var(--linea);
+  flex: none;
+}
+
+.detalle-mosaico { margin-top: 0.85rem; }
+.detalle-mosaico summary { cursor: pointer; color: var(--acento); }
+.detalle-mosaico summary:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+.detalle-mosaico .envoltorio-tabla { margin-top: 0.6rem; }
+
 .pie { padding: 0 0 2rem; font-size: 0.92rem; }
 .pie a { color: var(--acento); }
 
@@ -255,4 +375,13 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
 @media (max-width: 720px) {
   .fila-controles, .fila-barra-texto { align-items: flex-start; flex-direction: column; }
   .notacion, .notacion select { width: 100%; }
+  .tablero-mosaico { padding: 0.4rem; }
+  .mosaico { gap: 0.28rem; }
+  .celda-mosaico {
+    min-height: 4.4rem;
+    padding: 0.28rem 0.22rem 0.35rem;
+  }
+  .titulo-celda { font-size: 0.68rem; }
+  .linea-celda, .marca-celda { font-size: 0.62rem; }
+  .pasos { gap: 0.14rem; }
 }

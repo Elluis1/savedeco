@@ -2,6 +2,23 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Paneles: la parcela del jardín
+
+Diseño de paneles. Antes de elegir miré la página con la partida de Elluis, incluidos los paneles nuevos de Minijuegos, Jardín y Bolsa. El jardín ya traía fila, columna, etapa y si el casillero está abierto, pero en la página era una tabla de las plantas solas. Los hoyos vacíos y los cerrados quedaban solo en la descarga, y no se veía la parcela.
+
+Elegí esa grilla y no un modo claro, una portada ni un gráfico de la bolsa. La bolsa ya se lee en una tabla de 18 bienes. La parcela es el dato que la pantalla tiraba.
+
+Qué quedó:
+
+- Un mosaico genérico en el núcleo, dibujado con CSS. No suma librerías. El jardín lo usa como grilla de 6 por 6, en el orden del save.
+- Cada casillero dice el lugar, la planta o si es hoyo vacío o cerrado, la etapa y la edad. El color acompaña la etapa; el nombre de la etapa también está escrito.
+- La tabla de plantas sigue, plegada, para leer la edad sin recorrer la grilla.
+- La descarga de Cookie Clicker no cambia. Si un lector no arma la suya, el mosaico se baja como tabla.
+
+PR: pendiente
+
+Próximos pasos: la bolsa se podría leer más rápido con una barra por bien, si en alguna partida los valores se pisan. Sigue pendiente el resto de la tabla de estadísticas de Cookie Clicker, y el lector de Terraria cuando haya fixtures.
+
 ## 2026-10-20 — Revisión del PR 6
 
 Revisión independiente de los minijuegos. El string coincide con `M.save` / `M.load` y los nombres, con la loc ES. Una corrección chica en la misma rama:

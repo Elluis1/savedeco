@@ -352,6 +352,36 @@ test('un lector sin exportación propia hereda los archivos desde los paneles', 
   assert.equal(json.advertencias[0], 'El mundo vino sin semilla.');
 });
 
+test('un mosaico sin exportación propia se baja como tabla de casilleros', () => {
+  const resultado = {
+    ok: true,
+    juego: 'sin-lector',
+    nombreJuego: 'Sin lector',
+    version: '1',
+    datos: { nombre: 'Parcela' },
+    paneles: [{
+      id: 'parcela',
+      tipo: 'mosaico',
+      titulo: 'Parcela',
+      celdas: [{
+        marca: '1·1',
+        titulo: '=Hoyo',
+        linea: 'vacío',
+        etiqueta: 'Fila 1, columna 1. Hoyo vacío.',
+      }],
+    }],
+  };
+  const documento = documentoDe(resultado, { ahora: AHORA });
+  const seccion = documento.secciones.find((item) => item.id === 'parcela');
+  assert.equal(seccion.tabla.filas.length, 1);
+  assert.equal(seccion.tabla.filas[0].titulo, '=Hoyo');
+  assert.equal(seccion.tabla.filas[0].marca, '1·1');
+  const filas = parsearCsv(armarCsv(documento));
+  const hoyo = filas.find((fila) => fila.includes("'=Hoyo"));
+  assert.ok(hoyo);
+  assert.ok(armarTexto(documento).includes('Fila 1, columna 1. Hoyo vacío.'));
+});
+
 test('si el lector arma su documento, el núcleo usa eso y no los paneles', () => {
   registrar({
     id: 'propio',
