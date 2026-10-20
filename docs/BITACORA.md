@@ -2,6 +2,17 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Revisión del PR 8
+
+Revisión independiente de la segunda pasada de Romper. Los tests que ya estaban seguían verdes. En la misma rama, dos correcciones chicas:
+
+- Si el jardín no se interpreta, el mosaico ya no dice que la partida no trae casilleros. La nota explica el motivo y el hueco dice que no dibujo la parcela.
+- Un nivel de granja con decimales ya no tira al calcular qué casilleros están abiertos. Se trunca, igual que al leer el edificio.
+
+La partida de Elluis sigue sin avisos nuevos.
+
+PR: https://github.com/Elluis1/savedeco/pull/8
+
 ## 2026-10-20 — Romper
 
 Segunda pasada de casos hostiles. En main no hay lector de Terraria: el formato sigue documentado y el único lector es Cookie Clicker. Esta vez el foco fue lo que entró después de la primera pasada: la descarga, los minijuegos y el mosaico de la parcela. Los casos grandes se arman en memoria, en `tests/romper.test.js`. Los tests viejos siguen.

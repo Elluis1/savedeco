@@ -562,6 +562,17 @@ test('el jardín avisa si la parcela, la planta o la edad no cierran, y no tira'
   const htmlDeMas = renderizarPaneles(presentar(deMas, (valor) => String(valor)), (valor) => String(valor));
   assert.equal(htmlDeMas.includes('celda-mosaico'), false);
   assert.match(htmlDeMas, /6 por 6/);
+  assert.match(htmlDeMas, /No dibujo la parcela/);
+  assert.equal(htmlDeMas.includes('no trae casilleros'), false);
+
+  const conDecimal = leerMinijuego(2, jardinCrudo(), 2.2, 'Horno');
+  const nivelEntero = leerMinijuego(2, jardinCrudo(), 2, 'Horno');
+  assert.equal(conDecimal.ok, true, conDecimal.aviso);
+  assert.equal(conDecimal.casilleros.length, 36);
+  assert.deepEqual(
+    conDecimal.casilleros.map((casilla) => casilla.abierto),
+    nivelEntero.casilleros.map((casilla) => casilla.abierto),
+  );
 
   const formas = [
     jardinCrudo().replace(' ', '  '),

@@ -223,7 +223,11 @@ function cantidadRara(valor) {
 }
 
 function casilleroAbierto(x, y, nivel) {
-  const indice = Math.max(1, Math.min(LIMITES_PARCELA.length, Number(nivel) || 0)) - 1;
+  // parseInt del edificio ya trunca. Si el nivel llega con decimales igual, se
+  // trunca: si no, el índice queda fraccionario y la lista no se puede leer.
+  const n = Number(nivel);
+  const acotado = Number.isFinite(n) ? Math.trunc(n) : 0;
+  const indice = Math.max(1, Math.min(LIMITES_PARCELA.length, acotado)) - 1;
   const [x0, y0, x1, y1] = LIMITES_PARCELA[indice];
   return x >= x0 && x < x1 && y >= y0 && y < y1;
 }
@@ -684,7 +688,9 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
       .filter(([tono]) => tonosUsados.has(tono))
       .map(([tono, texto]) => ({ tono, texto })),
     celdas,
-    vacio: 'Esta partida no trae casilleros del jardín.',
+    vacio: jardin.presente && !jardin.ok
+      ? 'No dibujo la parcela.'
+      : 'Esta partida no trae casilleros del jardín.',
     detalle: plantadas.length === 0 ? null : {
       resumen: plantadas.length === 1 ? 'Ver la planta' : `Ver las ${formatear(plantadas.length)} plantas`,
       columnas: [
