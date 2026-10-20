@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { leerMinijuego } from '../js/lectores/cookie-clicker/minijuegos.js';
-import { MENSAJE_DANADO, MENSAJE_ENORME, MENSAJE_TRUNCADO } from '../js/lectores/cookie-clicker/formato.js';
+import { MENSAJE_DANADO, MENSAJE_ENORME, MENSAJE_TRUNCADO, aperturasDelCodigo, decodificar, detectar } from '../js/lectores/cookie-clicker/formato.js';
 import { LIMITE_CODIGO, MENSAJE_DESCONOCIDO, MENSAJE_LARGO, decodificarAutomatico, presentar } from '../js/nucleo/decodificar.js';
 import { armarArchivo, documentoDe, escaparCsv, nombreArchivo } from '../js/nucleo/exportar.js';
 import { formatearNumero } from '../js/nucleo/numeros.js';
@@ -468,6 +468,57 @@ test('una 2.053 cargada, con la bóveda llena, entra y el relleno de minijuego s
   const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
   assert.ok(html.includes('Horno Grande'));
   assert.ok(html.includes('Dedo índice reforzado'));
+});
+
+test('el botón abre el base64 una sola vez', async () => {
+  // Cuenta aperturas: un umbral de milisegundos falla en un CI cargado
+  // aunque el reuso esté bien, o pasa aunque se haya abierto dos veces.
+  const horno = partida();
+  const otra = partida({ carrera: '111;222;333;Otra;seed;0,1,0,0,0,0,0' });
+
+  const antesBoton = aperturasDelCodigo();
+  const junto = decodificarAutomatico(horno);
+  assert.equal(aperturasDelCodigo() - antesBoton, 1);
+  assert.equal(junto.ok, true, junto.error);
+  assert.equal(junto.datos.nombre, 'Horno');
+
+  // Otro texto, en el mismo turno, no hereda el plano ni la panadería.
+  detectar(horno);
+  const antesCruce = aperturasDelCodigo();
+  const cruce = decodificar(otra);
+  assert.equal(aperturasDelCodigo() - antesCruce, 1);
+  assert.equal(cruce.ok, true, cruce.error);
+  assert.equal(cruce.datos.nombre, 'Otra');
+
+  // El mismo texto, enseguida, no se abre de nuevo.
+  const antesMismo = aperturasDelCodigo();
+  detectar(horno);
+  const reusado = decodificar(horno);
+  assert.equal(aperturasDelCodigo() - antesMismo, 1);
+  assert.equal(reusado.ok, true, reusado.error);
+  assert.equal(reusado.datos.nombre, 'Horno');
+
+  // Ya se consumió: la siguiente lectura suelta abre ella misma.
+  const antesSuelta = aperturasDelCodigo();
+  const suelta = decodificar(horno);
+  assert.equal(aperturasDelCodigo() - antesSuelta, 1);
+  assert.equal(suelta.datos.nombre, 'Horno');
+
+  // El microturno suelta lo que nadie pidió: el mismo texto hay que abrirlo de nuevo.
+  detectar(horno);
+  await Promise.resolve();
+  const antesMicro = aperturasDelCodigo();
+  const trasMicro = decodificar(horno);
+  assert.equal(aperturasDelCodigo() - antesMicro, 1);
+  assert.equal(trasMicro.ok, true, trasMicro.error);
+  assert.equal(trasMicro.datos.nombre, 'Horno');
+
+  // Y una partida distinta no sale con el nombre de la que quedó en el turno anterior.
+  const antesOtra = aperturasDelCodigo();
+  const elluis = decodificar(fixture);
+  assert.equal(aperturasDelCodigo() - antesOtra, 1);
+  assert.equal(elluis.ok, true, elluis.error);
+  assert.equal(elluis.datos.nombre, 'Elluis');
 });
 
 test('un payload de más de un mega, todavía bajo el tope, se rechaza rápido', { timeout: 30_000 }, () => {
