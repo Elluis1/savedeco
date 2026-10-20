@@ -14,7 +14,7 @@ Qué quedó:
 - La descarga suma esas secciones. Los paneles nuevos son Minijuegos, Jardín y Bolsa.
 - Lo comprobé en el navegador con la partida de Elluis: 16 plantas en el jardín, 18 bienes en la bolsa, Vomitrax en el rubí y Godzamok en el jade.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/6
 
 Próximos pasos: el resto de la tabla de estadísticas de Cookie Clicker que el formato ya nombra y todavía no se extrae (pactos, devoradores, Papá Noel, renos, bóveda, volúmenes). Después, el lector de Terraria, por bytes, con fixtures sintéticos hasta que aparezca un `.plr` y un `.wld` reales. Sigue pendiente el pedido a Luigi de un save real.
 
