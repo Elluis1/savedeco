@@ -4,10 +4,13 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { leerMinijuego } from '../js/lectores/cookie-clicker/minijuegos.js';
+import { MENSAJE_DANADO, MENSAJE_ENORME, MENSAJE_TRUNCADO, decodificar, detectar } from '../js/lectores/cookie-clicker/formato.js';
 import { LIMITE_CODIGO, MENSAJE_DESCONOCIDO, MENSAJE_LARGO, decodificarAutomatico, presentar } from '../js/nucleo/decodificar.js';
-import { renderizarAdvertencias, renderizarAlerta, renderizarPaneles } from '../js/nucleo/paneles.js';
+import { armarArchivo, documentoDe, escaparCsv, nombreArchivo } from '../js/nucleo/exportar.js';
+import { formatearNumero } from '../js/nucleo/numeros.js';
+import { renderizarAdvertencias, renderizarAlerta, renderizarPanel, renderizarPaneles } from '../js/nucleo/paneles.js';
 import { registrar } from '../js/nucleo/registro.js';
-import { MENSAJE_DANADO, MENSAJE_ENORME, decodificar, detectar } from '../js/lectores/cookie-clicker/formato.js';
 import '../js/lectores/indice.js';
 
 const fixture = fs.readFileSync(new URL('./fixtures/luigi-cookieclicker.txt', import.meta.url), 'utf8');
@@ -530,4 +533,307 @@ test('un payload de más de un mega, todavía bajo el tope, se rechaza rápido',
   assert.ok(ms < 15_000, `tardó ${ms.toFixed(0)} ms`);
   assert.equal(valor.ok, false);
   assert.equal(valor.error, MENSAJE_ENORME);
+});
+
+const AHORA_HOSTIL = new Date('2026-10-20T12:00:00.000Z');
+
+function edificiosCon(indice, mini, nivel = 9) {
+  const vacio = '1,1,1,1,,0,1';
+  const lista = Array.from({ length: Math.max(indice + 1, 8) }, () => vacio);
+  lista[indice] = `10,20,30,${nivel},${mini},0,10`;
+  return lista.join(';');
+}
+
+function jardinCrudo({ suelo = '0', cosechas = '3', semillas = '0'.repeat(34), celdas = '0:0:'.repeat(36) } = {}) {
+  return `1000:${suelo}:2000:0:${cosechas}:4:1:0:3000: ${semillas} ${celdas}`;
+}
+
+function bienesBolsa(filas) {
+  return `2:3:1:0:0: ${filas.join('!')}! 0`;
+}
+
+function filaBien(sobre = {}) {
+  const base = { valor: '100', modo: '1', deriva: '-26', ticks: '9', stock: '4', oculto: '0', op: '1', previo: '250', ...sobre };
+  return [base.valor, base.modo, base.deriva, base.ticks, base.stock, base.oculto, base.op, base.previo].join(':');
+}
+
+test('el jardín avisa si la parcela, la planta o la edad no cierran, y no tira', () => {
+  const raro = Array.from({ length: 36 }, (_, i) => {
+    if (i === 0) return '35:500';
+    if (i === 1) return '1:-1';
+    return '0:0';
+  }).join(':') + ':';
+  const resultado = decodificarAutomatico(partida({
+    edificios: edificiosCon(2, jardinCrudo({ celdas: raro }), -5),
+  }));
+  assert.equal(resultado.ok, true, resultado.error);
+  const jardin = resultado.datos.minijuegos.jardin;
+  assert.equal(jardin.ok, true);
+  assert.equal(jardin.casilleros.length, 36);
+  assert.equal(jardin.casilleros[0].nombre, 'Planta desconocida #34');
+  assert.equal(jardin.casilleros[0].edad, 500);
+  assert.equal(jardin.casilleros[1].nombre, 'Trigo de panadero');
+  assert.equal(jardin.casilleros[1].edad, -1);
+  for (const casilla of jardin.casilleros) {
+    assert.ok(casilla.x >= 0 && casilla.x <= 5, casilla.x);
+    assert.ok(casilla.y >= 0 && casilla.y <= 5, casilla.y);
+  }
+  assert.equal(jardin.casilleros.filter((casilla) => casilla.abierto).length, 4);
+  const avisos = resultado.advertencias.join(' ');
+  assert.match(avisos, /planta del jardín/);
+  assert.match(avisos, /edad del jardín fuera de 0 a 100/);
+  assert.match(avisos, /nivel de la granja es negativo/);
+  assert.equal(avisos.includes('demasiado largo'), false);
+  assert.equal(avisos.includes('cantidad de semillas'), false);
+
+  const chica = decodificarAutomatico(partida({
+    edificios: edificiosCon(2, jardinCrudo({ celdas: '1:10:'.repeat(5) })),
+  }));
+  assert.equal(chica.ok, true, chica.error);
+  assert.equal(chica.datos.minijuegos.jardin.casilleros.length, 5);
+  assert.ok(chica.advertencias.some((aviso) => aviso.includes('cantidad de semillas o de casilleros')));
+  const htmlChica = renderizarPaneles(presentar(chica, (valor) => String(valor)), (valor) => String(valor));
+  assert.equal((htmlChica.match(/celda-mosaico/g) || []).length, 5);
+
+  const deMas = decodificarAutomatico(partida({
+    edificios: edificiosCon(2, jardinCrudo({ celdas: '0:0:'.repeat(37) })),
+  }));
+  assert.equal(deMas.ok, true, deMas.error);
+  assert.equal(deMas.datos.minijuegos.jardin.ok, false);
+  assert.equal(deMas.datos.minijuegos.jardin.casilleros, undefined);
+  assert.match(deMas.datos.minijuegos.jardin.aviso, /más casilleros que la parcela de 6 por 6/);
+  const htmlDeMas = renderizarPaneles(presentar(deMas, (valor) => String(valor)), (valor) => String(valor));
+  assert.equal(htmlDeMas.includes('celda-mosaico'), false);
+  assert.match(htmlDeMas, /6 por 6/);
+  assert.match(htmlDeMas, /No dibujo la parcela/);
+  assert.equal(htmlDeMas.includes('no trae casilleros'), false);
+
+  const conDecimal = leerMinijuego(2, jardinCrudo(), 2.2, 'Horno');
+  const nivelEntero = leerMinijuego(2, jardinCrudo(), 2, 'Horno');
+  assert.equal(conDecimal.ok, true, conDecimal.aviso);
+  assert.equal(conDecimal.casilleros.length, 36);
+  assert.deepEqual(
+    conDecimal.casilleros.map((casilla) => casilla.abierto),
+    nivelEntero.casilleros.map((casilla) => casilla.abierto),
+  );
+
+  const formas = [
+    jardinCrudo().replace(' ', '  '),
+    jardinCrudo().split(' ').slice(0, 2).join(' '),
+    `${jardinCrudo()} sobra`,
+    jardinCrudo({ semillas: '012' }),
+    jardinCrudo({ celdas: '1:2:3' }),
+    jardinCrudo({ suelo: 'NaN' }),
+    jardinCrudo({ cosechas: 'Infinity' }),
+    jardinCrudo({ cosechas: '1e309' }),
+  ];
+  for (const crudo of formas) {
+    const leido = leerMinijuego(2, crudo, 9, 'Horno');
+    assert.equal(leido.ok, false, crudo);
+    assert.equal(typeof leido.aviso, 'string');
+    assert.ok(leido.aviso.length > 20);
+  }
+});
+
+test('el panteón, el grimorio y la bolsa avisan ids y cantidades que no cierran', () => {
+  const panteon = leerMinijuego(6, '99/-2/11 9 1000 1', 1, 'Horno');
+  assert.equal(panteon.ok, true);
+  assert.equal(panteon.ranuras[1].espiritu, 'espíritu #-2');
+  assert.notEqual(panteon.ranuras[1].espiritu, 'vacía');
+  assert.match(panteon.aviso, /espíritu 99/);
+  assert.match(panteon.aviso, /espíritu -2/);
+  assert.match(panteon.aviso, /espíritu 11/);
+  assert.match(panteon.aviso, /cambios de culto/);
+  const vacio = leerMinijuego(6, '-1/-1/-1 3 1000 1', 1, 'Horno');
+  assert.equal(vacio.ok, true);
+  assert.equal(vacio.aviso, null);
+  assert.deepEqual(vacio.ranuras.map((ranura) => ranura.espiritu), ['vacía', 'vacía', 'vacía']);
+  assert.equal(leerMinijuego(6, '-1/1 3 1000 1', 1, 'H').ok, false);
+  assert.equal(leerMinijuego(6, 'NaN/1/2 0 1 1', 1, 'H').ok, false);
+  assert.equal(leerMinijuego(6, '1/2/3 Infinity 1 1', 1, 'H').ok, false);
+
+  const grimorio = leerMinijuego(7, '-4 -1 9007199254740991 1', 1, 'H');
+  assert.equal(grimorio.ok, true);
+  assert.equal(grimorio.magia, -4);
+  assert.equal(grimorio.hechizos, -1);
+  assert.match(grimorio.aviso, /negativa o desmedida/);
+  assert.equal(leerMinijuego(7, 'NaN 1 2 1', 1, 'H').ok, false);
+  assert.equal(leerMinijuego(7, 'Infinity 1 2 0', 1, 'H').ok, false);
+  assert.equal(leerMinijuego(7, '1 2 3', 1, 'H').ok, false);
+  const sano = leerMinijuego(7, '3.8853020766158295 12 137 1', 1, 'H');
+  assert.equal(sano.ok, true);
+  assert.equal(sano.aviso, null);
+
+  const filas = Array.from({ length: 18 }, (_, i) => (
+    i === 0 ? filaBien({ modo: '99', stock: '-9', op: '8', valor: '-100' }) : filaBien()
+  ));
+  const bolsa = leerMinijuego(5, bienesBolsa(filas), 1, "Horno $&$'");
+  assert.equal(bolsa.ok, true);
+  assert.equal(bolsa.bienes.length, 18);
+  assert.equal(bolsa.bienes[0].stock, -9);
+  assert.equal(bolsa.bienes[0].modo.nombre, 'modo #99');
+  assert.equal(bolsa.bienes[0].operacion.nombre, 'operación #8');
+  assert.equal(bolsa.bienes[17].nombre, "Horno $&$'");
+  assert.match(bolsa.aviso, /cantidad negativa o desmedida/);
+  assert.match(bolsa.aviso, /modo, una operación o un estilo/);
+  const perdida = leerMinijuego(5, bienesBolsa(Array.from({ length: 18 }, () => filaBien())).replace(':0:0: ', ':-3.5:0: '), 1, 'Horno');
+  assert.equal(perdida.ok, true, perdida.aviso);
+  assert.equal(perdida.beneficios, -3.5);
+  assert.equal(perdida.aviso, null);
+
+  const muchosCortos = leerMinijuego(5, bienesBolsa(Array.from({ length: 41 }, () => filaBien())), 1, 'H');
+  assert.equal(muchosCortos.ok, false);
+  assert.match(muchosCortos.aviso, /demasiados bienes/);
+  assert.equal(muchosCortos.bienes, undefined);
+});
+
+test('una bolsa de cientos de miles de bienes no se parte ni tarda', { timeout: 20_000 }, () => {
+  const texto = `1:0:0:0:0: ${'1:0:0:0:0:0:0:0!'.repeat(200_000)} 0`;
+  assert.ok(texto.length > 1_000_000);
+  const { valor, ms } = medir(() => leerMinijuego(5, texto, 1, 'Horno'));
+  assert.ok(ms < 500, `tardó ${ms.toFixed(0)} ms`);
+  assert.equal(valor.ok, false);
+  assert.match(valor.aviso, /demasiado largo/);
+  assert.equal(valor.bienes, undefined);
+});
+
+test('un nombre de panadería hostil no rompe Markdown, CSV, JSON, HTML ni el archivo', () => {
+  const nombre = '\u2028=HYPERLINK("http://evil")\u3000<script>\u0085@suma\n## Inyectado';
+  const resultado = decodificarAutomatico(partida({
+    carrera: `111;222;333;${nombre};seed;0`,
+    edificios: edificiosCon(5, bienesBolsa(Array.from({ length: 18 }, () => filaBien()))),
+  }));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.equal(resultado.datos.nombre, nombre);
+  assert.equal(resultado.datos.minijuegos.bolsa.bienes[17].nombre, nombre);
+
+  const html = renderizarPaneles(presentar(resultado, (valor) => String(valor)), (valor) => String(valor));
+  assert.equal(html.includes('<script'), false);
+  assert.equal(html.includes('<img'), false);
+  assert.ok(html.includes('&lt;script&gt;'));
+  assert.ok(html.includes('HYPERLINK'));
+
+  const opciones = { ahora: AHORA_HOSTIL };
+  const texto = armarArchivo(resultado, 'texto', opciones);
+  const csv = armarArchivo(resultado, 'csv', opciones);
+  const json = armarArchivo(resultado, 'json', opciones);
+  for (const archivo of [texto, csv, json]) {
+    assert.equal(archivo.nombre.includes('\u2028'), false, archivo.nombre);
+    assert.equal(archivo.nombre.includes('\u0085'), false, archivo.nombre);
+    assert.equal(archivo.nombre.includes('<'), false, archivo.nombre);
+    assert.equal(/[<>:"/\\|?*\u0000-\u001f]/.test(archivo.nombre), false, archivo.nombre);
+  }
+  assert.ok(texto.nombre.endsWith('.txt'));
+  assert.equal(texto.contenido.includes('\u2028'), false);
+  assert.equal(texto.contenido.includes('\u0085'), false);
+  const lineaPartida = texto.contenido.split('\n').find((linea) => linea.startsWith('- Partida:'));
+  assert.ok(lineaPartida.includes('## Inyectado'));
+  assert.equal(texto.contenido.split('\n').some((linea) => linea.startsWith('## Inyectado')), false);
+
+  assert.equal(csv.contenido.includes('\u2028'), true);
+  const celda = csv.contenido.split('\r\n').find((fila) => fila.includes('HYPERLINK'));
+  assert.ok(celda, csv.contenido.slice(0, 500));
+  assert.ok(celda.includes('"\'\u2028=HYPERLINK'), celda);
+  const datos = JSON.parse(json.contenido);
+  const panaderia = datos.secciones.flatMap((seccion) => seccion.campos || []).find((campo) => campo.etiqueta === 'Panadería');
+  assert.equal(panaderia.valor, nombre);
+
+  assert.equal(escaparCsv('\u2028=1+1'), '"\'\u2028=1+1"');
+  assert.equal(escaparCsv('\u3000=1+1'), "'\u3000=1+1");
+  assert.equal(escaparCsv('\u2003=1+1'), "'\u2003=1+1");
+  assert.equal(escaparCsv('\u2029@suma'), '"\'\u2029@suma"');
+  assert.equal(escaparCsv('\u0085+cmd'), '"\'\u0085+cmd"');
+  assert.equal(escaparCsv('\u1680-1'), "'\u1680-1");
+  assert.equal(nombreArchivo('pan\u0085ader\u2028ia', 'txt', AHORA_HOSTIL), 'Savedeco-panaderia-2026-10-20.txt');
+});
+
+test('un mosaico vacío avisa y uno gigante no se dibuja ni se baja', () => {
+  const vacio = renderizarPanel({
+    id: 'vacio',
+    tipo: 'mosaico',
+    titulo: 'Nada',
+    celdas: [],
+    vacio: 'No vino la parcela.',
+  }, (valor) => String(valor));
+  assert.ok(vacio.includes('No vino la parcela.'));
+  assert.equal(vacio.includes('celda-mosaico'), false);
+
+  const celdas = Array.from({ length: 8_000 }, (_, i) => ({
+    titulo: `<b>${i}</b>`,
+    tono: 'inicio',
+    etiqueta: `casilla ${i}`,
+    linea: 'x'.repeat(40),
+  }));
+  const { valor: html, ms } = medir(() => renderizarPanel({
+    id: 'grande',
+    tipo: 'mosaico',
+    titulo: 'Gigante',
+    columnas: 6,
+    celdas,
+    detalle: {
+      resumen: 'Ver',
+      columnas: [{ id: 'a', etiqueta: 'A' }],
+      filas: celdas,
+    },
+  }, (valor) => String(valor)));
+  assert.ok(ms < 200, `tardó ${ms.toFixed(0)} ms`);
+  assert.equal(html.includes('celda-mosaico'), false);
+  assert.equal(html.includes('<b>'), false);
+  assert.match(html, /8000 casilleros/);
+  assert.ok(html.length < 2_000, html.length);
+
+  const resultado = {
+    ok: true,
+    juego: 'sin-lector-hostil',
+    nombreJuego: 'Hostil',
+    version: '1',
+    advertencias: [],
+    datos: { nombre: 'Parcela' },
+    paneles: [{ id: 'grande', tipo: 'mosaico', titulo: 'Gigante', celdas }],
+  };
+  const { valor: documento, ms: msDoc } = medir(() => documentoDe(resultado, { ahora: AHORA_HOSTIL }));
+  assert.ok(msDoc < 200, `el documento tardó ${msDoc.toFixed(0)} ms`);
+  const seccion = documento.secciones.find((item) => item.id === 'grande');
+  assert.equal(seccion.tabla.filas.length, 0);
+  assert.match(seccion.campos[0].valor, /8000 casilleros/);
+  const bajada = armarArchivo(resultado, 'texto', { ahora: AHORA_HOSTIL, documento });
+  assert.ok(bajada.contenido.length < 20_000, bajada.contenido.length);
+  assert.ok(bajada.contenido.includes('8000 casilleros'));
+});
+
+test('un temporizador enorme, una versión rara y un nombre con separadores no tiran', () => {
+  const misc = Array.from({ length: 23 }, () => '1');
+  misc[20] = '9'.repeat(20);
+  misc[22] = 'halloween';
+  const enorme = decodificarAutomatico(partida({ misc }));
+  assert.equal(enorme.ok, true, enorme.error);
+  const html = renderizarPaneles(presentar(enorme, formatearNumero), formatearNumero);
+  assert.ok(html.includes('un tiempo desmedido'));
+  assert.equal(html.includes('e+'), false);
+
+  const futura = decodificarAutomatico(partida({ version: '99.001' }));
+  assert.equal(futura.ok, true, futura.error);
+  assert.ok(futura.advertencias.some((aviso) => aviso.includes('más nueva')));
+  const lejana = exigirError(partida({ version: '100.1', edificios: 'no' }));
+  assert.ok(lejana.error === MENSAJE_DANADO || lejana.error === MENSAJE_TRUNCADO || lejana.error === MENSAJE_DESCONOCIDO);
+
+  const conPipe = exigirError(partida({ carrera: '111;222;333;Ho|rno;seed;0' }));
+  assert.equal(conPipe.error, MENSAJE_TRUNCADO);
+  const conPuntoYComa = decodificarAutomatico(partida({ carrera: '111;222;333;Ho;rno;seed;0' }));
+  assert.equal(conPuntoYComa.ok, true, conPuntoYComa.error);
+  assert.equal(conPuntoYComa.datos.nombre, 'Ho');
+
+  const suma = decodificarAutomatico(partida({
+    misc: ['1e308', '1e308', '0', '0', '0', '0', '0', '0', '1e308'],
+  }));
+  assert.equal(suma.ok, true, suma.error);
+  let paneles = '';
+  assert.doesNotThrow(() => {
+    paneles = renderizarPaneles(presentar(suma, formatearNumero), formatearNumero);
+  });
+  assert.equal(paneles.includes('TypeError'), false);
+  assert.equal(paneles.includes('Infinity'), false);
+  assert.ok(paneles.includes('∞'));
+  const json = armarArchivo(suma, 'json', { ahora: AHORA_HOSTIL });
+  assert.doesNotThrow(() => JSON.parse(json.contenido));
 });

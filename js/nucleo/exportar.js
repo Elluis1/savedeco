@@ -4,6 +4,7 @@
 //
 // Todo se genera en memoria. La página lo baja con Blob y URL.createObjectURL.
 
+import { MAX_CELDAS_MOSAICO } from './paneles.js';
 import { buscarLector } from './registro.js';
 import { NOTACION_CORTA, formatearNumero } from './numeros.js';
 
@@ -26,11 +27,18 @@ const NOTAS_GENERICAS = [
 
 // Lo que Windows no acepta en un nombre, más el DEL.
 const ILEGALES_WINDOWS = /[<>:"/\\|?*\u0000-\u001f\u007f]/g;
-// Ancho cero y marcas que invierten el texto: no rompen el disco, pero
-// disfrazan la extensión. La panadería sale del save, así que se sacan.
-const INVISIBLES_NOMBRE = /[\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
+// Ancho cero, separadores de línea unicode y marcas que invierten el texto.
+// No rompen el disco, pero disfrazan la extensión o parten el nombre. La
+// panadería sale del save, así que se sacan.
+const INVISIBLES_NOMBRE = /[\u0085\u180e\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u206f\ufeff]/g;
 // Excel ejecuta la fórmula si el primer carácter que le importa es = + - @.
-const PREFIJO_IGNORABLE_CSV = /^[\u0000-\u0020\u007f\u00a0\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]*/;
+// Antes se salta espacios de cualquier ancho, separadores de línea y marcas
+// invisibles. Si no, un nombre que arranca con un espacio ideográfico y un =
+// pasa como fórmula.
+const PREFIJO_IGNORABLE_CSV = /^[\u0000-\u0020\u007f\u0085\u00a0\u1680\u180e\u2000-\u200f\u2028-\u202f\u205f-\u206f\u3000\ufeff]*/;
+// Un separador de línea unicode parte la fila del CSV igual que un \n, y
+// algunos visores de Markdown lo tratan como salto.
+const SALTO_RARO = /[\u0085\u2028\u2029]/;
 
 function esNumerico(tipo) {
   return tipo === 'numero' || tipo === 'entero' || tipo === 'fecha';
@@ -86,10 +94,8 @@ function textoValor(descrito) {
 function aplanar(valor) {
   return String(valor ?? '')
     .replaceAll('\r\n', ' ')
-    .replaceAll('\n', ' ')
-    .replaceAll('\r', ' ')
-    .replaceAll('|', '\\|')
-    .replaceAll('\t', ' ');
+    .replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]/g, ' ')
+    .replaceAll('|', '\\|');
 }
 
 function fechaDocumento(documento) {
@@ -117,7 +123,7 @@ export function escaparCsv(valor) {
   let texto = String(valor ?? '');
   const resto = texto.replace(PREFIJO_IGNORABLE_CSV, '');
   if (/^[=+\-@]/.test(resto)) texto = `'${texto}`;
-  if (/[;"\r\n]/.test(texto)) return `"${texto.replaceAll('"', '""')}"`;
+  if (/[;"\r\n]/.test(texto) || SALTO_RARO.test(texto)) return `"${texto.replaceAll('"', '""')}"`;
   return texto;
 }
 
@@ -572,11 +578,19 @@ function documentoDesdePaneles(resultado) {
     } else if (panel.tipo === 'tabla') {
       seccion.tabla = tablaDesde(panel.columnas || [], panel.filas || []);
     } else if (panel.tipo === 'mosaico') {
-      const celdas = Array.isArray(panel.celdas) ? panel.celdas : [];
-      if (celdas.length === 0) {
+      const todas = Array.isArray(panel.celdas) ? panel.celdas : [];
+      const enorme = todas.length > MAX_CELDAS_MOSAICO;
+      const celdas = enorme ? [] : todas;
+      if (todas.length === 0) {
         seccion.campos = [{
           etiqueta: 'Grilla',
           valor: panel.vacio || 'No hay nada para mostrar.',
+          tipo: 'texto',
+        }];
+      } else if (enorme) {
+        seccion.campos = [{
+          etiqueta: 'Grilla',
+          valor: `Esta grilla trae ${todas.length} casilleros. Es demasiado grande para bajarla.`,
           tipo: 'texto',
         }];
       }
