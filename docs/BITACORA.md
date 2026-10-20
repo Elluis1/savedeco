@@ -26,7 +26,7 @@ Qué hace ahora:
 
 Una partida de Elluis no gana avisos nuevos. `NaN` e `Infinity` en un minijuego siguen sin interpretarse. Un `|` en el nombre de la panadería parte el save como lo haría el juego y termina en el error de código truncado, sin excepción.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/8
 
 Próximos pasos: el resto de la tabla de estadísticas de Cookie Clicker, y el lector de Terraria cuando haya un camino de bytes y fixtures. Sigue sin haber lector de Terraria en main.
 
