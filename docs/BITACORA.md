@@ -10,7 +10,7 @@ Lo que valía la pena: el botón abría el base64 dos veces, una en `detectar` y
 
 Miré y no toqué el mosaico (ya es barato) ni sacar los 1.240 nombres del HTML inicial: a CPU 4× el frame bajaría de 143 ms a 119 ms, y abrir la lista ya está en dos frames.
 
-PR: https://github.com/Elluis1/savedeco/pull/PENDIENTE
+PR: https://github.com/Elluis1/savedeco/pull/9
 
 Próximos pasos: si en una notebook de verdad el primer pintado de los paneles se siente, recién ahí conviene no meter los nombres en el DOM hasta abrir la lista. El JSON de Elluis pesa 508 KB; armarlo son 3 ms, así que el candidato sería achicar el pretty-print si alguien lo abre y le pesa. Con un segundo lector, cargarlo al decodificar.
 
