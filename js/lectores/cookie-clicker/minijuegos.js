@@ -8,6 +8,10 @@
 
 const MAX_LARGO = 4_000;
 const MAX_BIENES = 40;
+const MAX_PARCELA = 36;
+const EDAD_MAXIMA = 100;
+// Muy por arriba de una partida: cosechas, stock o hechizos no llegan acá.
+const CANTIDAD_DESMEDIDA = 1e12;
 
 function entero(texto) {
   if (typeof texto !== 'string' || !/^-?\d+$/.test(texto)) return null;
@@ -204,8 +208,26 @@ function demasiado(tipo) {
   };
 }
 
+function rechazado(tipo, aviso) {
+  return {
+    tipo,
+    nombre: NOMBRE_TIPO[tipo],
+    presente: true,
+    ok: false,
+    aviso,
+  };
+}
+
+function cantidadRara(valor) {
+  return valor < 0 || valor > CANTIDAD_DESMEDIDA;
+}
+
 function casilleroAbierto(x, y, nivel) {
-  const indice = Math.max(1, Math.min(LIMITES_PARCELA.length, Number(nivel) || 0)) - 1;
+  // parseInt del edificio ya trunca. Si el nivel llega con decimales igual, se
+  // trunca: si no, el índice queda fraccionario y la lista no se puede leer.
+  const n = Number(nivel);
+  const acotado = Number.isFinite(n) ? Math.trunc(n) : 0;
+  const indice = Math.max(1, Math.min(LIMITES_PARCELA.length, acotado)) - 1;
   const [x0, y0, x1, y1] = LIMITES_PARCELA[indice];
   return x >= x0 && x < x1 && y >= y0 && y < y1;
 }
@@ -239,8 +261,12 @@ function leerJardin(crudo, nivel) {
   const celdas = sinColaVacia(partes[2].split(':'));
   if (celdas.length % 2 !== 0) return ilegible('jardin');
   const pares = celdas.length / 2;
-  if (pares > 36) return demasiado('jardin');
-  const deMas = cabecera.length > 9 || semillas.length > PLANTAS.length || pares > 36;
+  // Más de 36 no es "texto largo": es una parcela que no entra en 6 por 6.
+  // No la dibujamos a medias, porque la fila 7 ya no es un casillero del juego.
+  if (pares > MAX_PARCELA) {
+    return rechazado('jardin', 'El jardín trae más casilleros que la parcela de 6 por 6. Lo dejo sin interpretar.');
+  }
+  const deMas = cabecera.length > 9;
 
   const [proximoPaso, sueloId, proximoSuelo, congelado, cosechas, cosechasTotales, abierto, sacrificios, proximoCongelar] = numeros;
   const sueloConocido = sueloId >= 0 && sueloId < SUELOS.length;
@@ -254,14 +280,21 @@ function leerJardin(crudo, nivel) {
     });
   }
   const casilleros = [];
+  let plantaDesconocida = false;
+  let edadRara = false;
   for (let i = 0; i < pares; i += 1) {
     const plantaGuardada = entero(celdas[i * 2]);
     const edad = entero(celdas[i * 2 + 1]);
     if (plantaGuardada == null || edad == null) return ilegible('jardin');
     const x = i % 6;
     const y = Math.floor(i / 6);
+    if (x < 0 || x > 5 || y < 0 || y > 5) {
+      return rechazado('jardin', 'El jardín trae un casillero fuera de la parcela de 6 por 6. Lo dejo sin interpretar.');
+    }
     const vacia = plantaGuardada === 0;
     const planta = vacia ? null : PLANTAS[plantaGuardada - 1];
+    if (!vacia && !planta) plantaDesconocida = true;
+    if (!vacia && (edad < 0 || edad > EDAD_MAXIMA)) edadRara = true;
     casilleros.push({
       x,
       y,
@@ -275,8 +308,16 @@ function leerJardin(crudo, nivel) {
 
   const avisos = [];
   if (!sueloConocido) avisos.push(`El suelo del jardín ${sueloId} no está en la lista del fuente.`);
-  if (deMas || semillas.length !== PLANTAS.length || pares !== 36) {
+  if (deMas || semillas.length !== PLANTAS.length || pares !== MAX_PARCELA) {
     avisos.push('El jardín no trae la cantidad de semillas o de casilleros que escribe el fuente actual. Leí lo que vino.');
+  }
+  if (plantaDesconocida) avisos.push('Hay una planta del jardín que no está en la lista del fuente.');
+  if (edadRara) avisos.push('Hay una edad del jardín fuera de 0 a 100. La muestro igual.');
+  if (Number(nivel) < 0) {
+    avisos.push('El nivel de la granja es negativo. Para los casilleros abiertos lo leo como 1.');
+  }
+  if (cantidadRara(cosechas) || cantidadRara(cosechasTotales) || cantidadRara(sacrificios)) {
+    avisos.push('El jardín trae una cantidad negativa o desmedida. La muestro igual.');
   }
   return {
     tipo: 'jardin',
@@ -314,13 +355,22 @@ function leerBolsa(crudo, nombrePanaderia) {
   }
   const trozos = partes[1].split('!');
   if (trozos.length && trozos[trozos.length - 1] === '') trozos.pop();
-  if (trozos.length > MAX_BIENES) return demasiado('bolsa');
+  if (trozos.length > MAX_BIENES) {
+    return rechazado('bolsa', 'La bolsa trae demasiados bienes para leerlos. Lo dejo sin interpretar.');
+  }
   const abierto = entero(partes[2]);
   if (abierto == null) return ilegible('bolsa');
 
   const bienes = [];
   let filaRota = false;
   let sobranCampos = false;
+  let cantidadFuera = false;
+  let catalogoFuera = false;
+  // Los beneficios pueden ser negativos: es una pérdida, no un save roto.
+  if (cantidadRara(brokers) || Math.abs(beneficios) > CANTIDAD_DESMEDIDA) cantidadFuera = true;
+  if (estiloId < 0 || estiloId >= ESTILOS_GRAFICO.length || colorId < 0 || colorId >= COLORES_GRAFICO.length) {
+    catalogoFuera = true;
+  }
   for (let i = 0; i < trozos.length; i += 1) {
     const campos = trozos[i].split(':');
     if (campos.length < 8) {
@@ -334,6 +384,13 @@ function leerBolsa(crudo, nombrePanaderia) {
       continue;
     }
     const [centesimas, modoId, derivaCentesimas, ticks, stock, oculto, operacionId, previoCentesimas] = valores;
+    if (cantidadRara(stock) || cantidadRara(ticks) || cantidadRara(centesimas) || cantidadRara(previoCentesimas)) {
+      cantidadFuera = true;
+    }
+    if (Math.abs(derivaCentesimas) > CANTIDAD_DESMEDIDA) cantidadFuera = true;
+    if (modoId < 0 || modoId >= MODOS_BOLSA.length || operacionId < 0 || operacionId >= OPERACIONES.length) {
+      catalogoFuera = true;
+    }
     const catalogo = BIENES[i];
     const nombre = catalogo ? reemplazarPanaderia(catalogo.tipo, nombrePanaderia) : `Bien desconocido #${i}`;
     bienes.push({
@@ -363,6 +420,8 @@ function leerBolsa(crudo, nombrePanaderia) {
   if (oficinaId < 0 || oficinaId >= OFICINAS.length) {
     avisos.push(`La oficina ${oficinaId} no está en la lista del fuente.`);
   }
+  if (cantidadFuera) avisos.push('La bolsa trae una cantidad negativa o desmedida. La muestro igual.');
+  if (catalogoFuera) avisos.push('La bolsa trae un modo, una operación o un estilo que no está en la lista del fuente.');
   return {
     tipo: 'bolsa',
     nombre: 'Bolsa',
@@ -393,8 +452,12 @@ function leerPanteon(crudo) {
   }
   const avisos = [];
   if (partes.length > 4) avisos.push('El panteón trae campos de más. Leí los que escribe el fuente actual.');
+  if (cambios < 0 || cambios > 3) {
+    avisos.push('Los cambios de culto quedan fuera de 0 a 3. Los muestro igual.');
+  }
   const ranuras = ids.map((id, indice) => {
-    const vacia = id < 0;
+    // El fuente usa -1 para la ranura vacía. Otro negativo no es "vacía".
+    const vacia = id === -1;
     if (!vacia && (id < 0 || id >= ESPIRITUS.length)) {
       avisos.push(`El espíritu ${id} no está en la lista del fuente.`);
     }
@@ -426,12 +489,17 @@ function leerGrimorio(crudo) {
   const hechizosTotales = entero(partes[2]);
   const abierto = entero(partes[3]);
   if (magia == null || hechizos == null || hechizosTotales == null || abierto == null) return ilegible('grimorio');
+  const avisos = [];
+  if (partes.length > 4) avisos.push('El grimorio trae campos de más. Leí los que escribe el fuente actual.');
+  if (cantidadRara(magia) || cantidadRara(hechizos) || cantidadRara(hechizosTotales)) {
+    avisos.push('El grimorio trae una cantidad negativa o desmedida. La muestro igual.');
+  }
   return {
     tipo: 'grimorio',
     nombre: 'Grimorio',
     presente: true,
     ok: true,
-    aviso: partes.length > 4 ? 'El grimorio trae campos de más. Leí los que escribe el fuente actual.' : null,
+    aviso: avisos.join(' ') || null,
     magia,
     hechizos,
     hechizosTotales,
@@ -567,16 +635,18 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
   const grimorio = juegos.grimorio || vacio('grimorio');
 
   const resumen = [];
+  const semillasJardin = Array.isArray(jardin.semillas) ? jardin.semillas : [];
+  const casilleros = jardin.ok && jardin.presente && Array.isArray(jardin.casilleros) ? jardin.casilleros : [];
   if (!jardin.presente) resumen.push(tarjeta('Jardín', 'Sin datos'));
   else if (!jardin.ok) resumen.push(tarjeta('Jardín', 'No se pudo leer', jardin.aviso));
   else {
-    const nombres = jardin.semillas.filter((semilla) => semilla.desbloqueada).map((semilla) => semilla.nombre);
+    const nombres = semillasJardin.filter((semilla) => semilla.desbloqueada).map((semilla) => semilla.nombre);
     resumen.push(tarjeta('Suelo del jardín', jardin.suelo.nombre, jardin.congelado ? 'El jardín estaba congelado.' : 'El jardín no estaba congelado.'));
     resumen.push(tarjeta('Plantas maduras cosechadas', jardin.cosechas, `${formatear(jardin.cosechasTotales)} en total.`));
     resumen.push(tarjeta('Sacrificios del jardín', jardin.sacrificios, 'Veces que se sacrificó el jardín. El fuente lo guarda como convertTimes.'));
     resumen.push(tarjeta(
       'Semillas desbloqueadas',
-      `${formatear(jardin.semillasDesbloqueadas)} de ${formatear(jardin.semillas.length)}`,
+      `${formatear(jardin.semillasDesbloqueadas)} de ${formatear(semillasJardin.length)}`,
       nombres.length ? nombres.join(', ') : 'Ninguna figura con el bit en 1.',
     ));
   }
@@ -584,7 +654,7 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
   if (!panteon.presente) resumen.push(tarjeta('Panteón', 'Sin datos'));
   else if (!panteon.ok) resumen.push(tarjeta('Panteón', 'No se pudo leer', panteon.aviso));
   else {
-    for (const ranura of panteon.ranuras) {
+    for (const ranura of (Array.isArray(panteon.ranuras) ? panteon.ranuras : [])) {
       resumen.push(tarjeta(ranura.nombre, ranura.espiritu));
     }
     resumen.push(tarjeta('Cambios de culto', panteon.cambios, 'Los que quedaban, de 3.'));
@@ -604,7 +674,6 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
     resumen.push(tarjeta('Beneficios', bolsa.beneficios, 'En segundos del mayor g/s crudo, como los muestra el juego. No son galletas.'));
   }
 
-  const casilleros = jardin.ok && jardin.presente ? jardin.casilleros : [];
   const plantadas = casilleros.filter((casilla) => casilla.plantaId != null);
   const celdas = casilleros.map((casilla) => celdaJardin(casilla, formatear));
   const tonosUsados = new Set(celdas.map((celda) => celda.tono));
@@ -619,7 +688,9 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
       .filter(([tono]) => tonosUsados.has(tono))
       .map(([tono, texto]) => ({ tono, texto })),
     celdas,
-    vacio: 'Esta partida no trae casilleros del jardín.',
+    vacio: jardin.presente && !jardin.ok
+      ? 'No dibujo la parcela.'
+      : 'Esta partida no trae casilleros del jardín.',
     detalle: plantadas.length === 0 ? null : {
       resumen: plantadas.length === 1 ? 'Ver la planta' : `Ver las ${formatear(plantadas.length)} plantas`,
       columnas: [
@@ -654,7 +725,7 @@ export function panelesMinijuegos(minijuegos, formatear = (valor) => String(valo
       { id: 'modo', etiqueta: 'Modo' },
       { id: 'oculto', etiqueta: 'Oculto' },
     ],
-    filas: (bolsa.ok && bolsa.presente ? bolsa.bienes : []).map((bien) => ({
+    filas: (bolsa.ok && bolsa.presente && Array.isArray(bolsa.bienes) ? bolsa.bienes : []).map((bien) => ({
       bien: { texto: bien.nombre },
       simbolo: { texto: bien.simbolo },
       valor: { numero: bien.valor },
@@ -753,7 +824,7 @@ export function seccionesMinijuegos(minijuegos) {
           { id: 'etapa', etiqueta: 'Etapa', tipo: 'texto' },
           { id: 'casillero', etiqueta: 'Casillero', tipo: 'texto' },
         ],
-        filas: jardin.casilleros.map((casilla) => ({
+        filas: (Array.isArray(jardin.casilleros) ? jardin.casilleros : []).map((casilla) => ({
           fila: casilla.y + 1,
           columna: casilla.x + 1,
           planta: casilla.nombre,
@@ -773,7 +844,7 @@ export function seccionesMinijuegos(minijuegos) {
           { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
           { id: 'desbloqueada', etiqueta: 'Desbloqueada', tipo: 'texto' },
         ],
-        filas: jardin.semillas.map((semilla) => ({
+        filas: (Array.isArray(jardin.semillas) ? jardin.semillas : []).map((semilla) => ({
           id: semilla.id,
           nombre: semilla.nombre,
           desbloqueada: siNo(semilla.desbloqueada),
@@ -793,7 +864,7 @@ export function seccionesMinijuegos(minijuegos) {
           { id: 'id', etiqueta: 'Id', tipo: 'entero' },
           { id: 'espiritu', etiqueta: 'Espíritu', tipo: 'texto' },
         ],
-        filas: panteon.ranuras.map((ranura) => ({
+        filas: (Array.isArray(panteon.ranuras) ? panteon.ranuras : []).map((ranura) => ({
           ranura: ranura.nombre,
           id: ranura.espirituId == null ? -1 : ranura.espirituId,
           espiritu: ranura.espiritu,
@@ -822,7 +893,7 @@ export function seccionesMinijuegos(minijuegos) {
           { id: 'operacion', etiqueta: 'Última operación del tick', tipo: 'texto' },
           { id: 'previo', etiqueta: 'Último precio de compra', tipo: 'numero' },
         ],
-        filas: bolsa.bienes.map((bien) => ({
+        filas: (Array.isArray(bolsa.bienes) ? bolsa.bienes : []).map((bien) => ({
           id: bien.id,
           nombre: bien.nombre,
           empresa: bien.empresa,
