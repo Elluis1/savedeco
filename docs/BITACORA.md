@@ -2,6 +2,20 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Formato de Terraria
+
+Investigador de formatos. No hay lector nuevo: esta corrida deja documentado el save de Terraria, que es la segunda prioridad y no estaba en el roadmap.
+
+Qué quedó:
+
+- `docs/FORMATOS/terraria.md`. El `.plr` se descifra con AES-128-CBC, PKCS#7, clave `"h3y_gUyZ"` en UTF-16LE usada también como IV. Web Crypto lo acepta tal cual. El `.wld` va en claro, con punteros para no leer los tiles. Los campos que no cierran contra una fuente quedan como desconocidos.
+- `tests/terraria-cifrado.test.js`. Arma un `.plr` mínimo en memoria y lo abre con `globalThis.crypto.subtle`. No se commiteó un save real: no apareció uno con licencia libre.
+- El roadmap suma la viabilidad de Terraria y deja Kittens Game como el próximo juego a investigar.
+
+PR: pendiente
+
+Próximos pasos: el lector de Terraria, cuando se encare, entra por bytes y no por el `readAsText` de hoy. Antes hace falta un `.plr` y un `.wld` reales. La próxima investigación de formato es Kittens Game.
+
 ## 2026-10-19 — Revisión del PR 4
 
 Revisión independiente de la descarga. Correcciones chicas en la misma rama:
