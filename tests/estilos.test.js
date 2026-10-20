@@ -24,4 +24,6 @@ test('la parcela es una grilla de columnas fijas', () => {
   assert.match(bloque[1], /display:\s*grid/);
   assert.match(bloque[1], /grid-template-columns:\s*repeat\(var\(--columnas\)/);
   assert.doesNotMatch(bloque[1], /column-count\s*:/);
+  assert.match(sinComentarios, /\.linea-celda[\s\S]*?overflow-wrap:\s*anywhere/);
+  assert.match(sinComentarios, /\.mosaico > li::marker[\s\S]*?content:\s*none/);
 });

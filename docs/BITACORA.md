@@ -17,6 +17,8 @@ Qué quedó:
 
 PR: https://github.com/Elluis1/savedeco/pull/7
 
+Revisión: el corte de las etapas es el de `tileTooltip` y cerrado es el casillero que `isTileUnlocked` no abre. En la misma rama, la grilla angosta ya no se ensancha por el marcador de la lista, la etapa entra en el casillero, el puntito apagado se distingue del fondo, la muestra de hoyo y cerrado sigue punteada, y un mosaico vacío avisa en la descarga.
+
 Próximos pasos: la bolsa se podría leer más rápido con una barra por bien, si en alguna partida los valores se pisan. Sigue pendiente el resto de la tabla de estadísticas de Cookie Clicker, y el lector de Terraria cuando haya fixtures.
 
 ## 2026-10-20 — Revisión del PR 6

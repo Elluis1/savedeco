@@ -382,6 +382,38 @@ test('un mosaico sin exportación propia se baja como tabla de casilleros', () =
   assert.ok(armarTexto(documento).includes('Fila 1, columna 1. Hoyo vacío.'));
 });
 
+test('un mosaico vacío avisa en la descarga y un casillero nulo dice Vacío', () => {
+  const resultado = {
+    ok: true,
+    juego: 'sin-lector',
+    nombreJuego: 'Sin lector',
+    version: '1',
+    datos: { nombre: 'Parcela' },
+    paneles: [
+      {
+        id: 'vacio',
+        tipo: 'mosaico',
+        titulo: 'Sin parcela',
+        celdas: [],
+        vacio: 'No vino la parcela.',
+      },
+      {
+        id: 'hueco',
+        tipo: 'mosaico',
+        titulo: 'Con un hueco',
+        celdas: [null],
+      },
+    ],
+  };
+  const documento = documentoDe(resultado, { ahora: AHORA });
+  const vacio = documento.secciones.find((item) => item.id === 'vacio');
+  assert.equal(vacio.campos[0].valor, 'No vino la parcela.');
+  assert.equal(vacio.tabla.filas.length, 0);
+  const hueco = documento.secciones.find((item) => item.id === 'hueco');
+  assert.equal(hueco.tabla.filas[0].titulo, 'Vacío');
+  assert.ok(armarTexto(documento).includes('No vino la parcela.'));
+});
+
 test('si el lector arma su documento, el núcleo usa eso y no los paneles', () => {
   registrar({
     id: 'propio',

@@ -108,7 +108,7 @@ function panelLista(panel) {
   return `<ul class="lista-simple">${filas}</ul>`;
 }
 
-const TONOS_MOSAICO = new Set(['apagado', 'hueco', 'inicio', 'medio', 'alto', 'listo']);
+const TONOS_MOSAICO = new Set(['apagado', 'hueco', 'inicio', 'medio', 'alto', 'listo', 'neutro']);
 
 function enteroAcotado(valor, minimo, maximo, porDefecto) {
   const numero = Number(valor);
@@ -159,7 +159,7 @@ function panelMosaico(panel, formatear, formatearFecha) {
       return `<li><span class="muestra tono-${tono}" aria-hidden="true"></span>${escaparHtml(item.texto ?? '')}</li>`;
     })
     .join('');
-  const bloqueLeyenda = leyenda ? `<ul class="leyenda-mosaico">${leyenda}</ul>` : '';
+  const bloqueLeyenda = leyenda ? `<ul class="leyenda-mosaico" role="list">${leyenda}</ul>` : '';
   let detalle = '';
   if (panel.detalle?.columnas && Array.isArray(panel.detalle.filas) && panel.detalle.filas.length > 0) {
     const tabla = panelTabla(panel.detalle, formatear, formatearFecha);
@@ -168,7 +168,7 @@ function panelMosaico(panel, formatear, formatearFecha) {
   }
   const etiquetaGrilla = escaparHtml(panel.etiqueta || panel.titulo || 'Grilla');
   return `<div class="tablero-mosaico">
-    <ul class="mosaico" style="--columnas:${columnas}" aria-label="${etiquetaGrilla}">${piezas}</ul>
+    <ul class="mosaico" style="--columnas:${columnas}" role="list" aria-label="${etiquetaGrilla}">${piezas}</ul>
     ${bloqueLeyenda}
   </div>
   ${detalle}`;

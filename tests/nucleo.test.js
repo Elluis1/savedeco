@@ -86,6 +86,7 @@ test('el mosaico escapa el texto y no deja pasar un tono inventado', () => {
   assert.ok(html.includes('&quot;onclick&quot;'));
   assert.ok(html.includes('aria-label="Fila 1 &quot;columna&quot;"'));
   assert.ok(html.includes('aria-label="Parcela &lt;b&gt;"'));
+  assert.ok(html.includes('role="list"'));
   assert.ok(html.includes('tono-neutro'));
   assert.ok(html.includes('tono-inicio'));
   assert.equal(html.includes('tono-no-existe'), false);

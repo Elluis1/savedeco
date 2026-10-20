@@ -572,6 +572,14 @@ function documentoDesdePaneles(resultado) {
     } else if (panel.tipo === 'tabla') {
       seccion.tabla = tablaDesde(panel.columnas || [], panel.filas || []);
     } else if (panel.tipo === 'mosaico') {
+      const celdas = Array.isArray(panel.celdas) ? panel.celdas : [];
+      if (celdas.length === 0) {
+        seccion.campos = [{
+          etiqueta: 'Grilla',
+          valor: panel.vacio || 'No hay nada para mostrar.',
+          tipo: 'texto',
+        }];
+      }
       seccion.tabla = {
         columnas: [
           { id: 'marca', etiqueta: 'Marca', tipo: 'texto' },
@@ -579,12 +587,17 @@ function documentoDesdePaneles(resultado) {
           { id: 'linea', etiqueta: 'Detalle', tipo: 'texto' },
           { id: 'etiqueta', etiqueta: 'Descripción', tipo: 'texto' },
         ],
-        filas: (Array.isArray(panel.celdas) ? panel.celdas : []).map((celda) => ({
-          marca: celda?.marca ?? '',
-          titulo: celda?.titulo ?? '',
-          linea: celda?.linea ?? '',
-          etiqueta: celda?.etiqueta ?? '',
-        })),
+        filas: celdas.map((celda) => {
+          if (celda == null || typeof celda !== 'object') {
+            return { marca: '', titulo: 'Vacío', linea: '', etiqueta: 'Vacío' };
+          }
+          return {
+            marca: celda.marca ?? '',
+            titulo: celda.titulo ?? '',
+            linea: celda.linea ?? '',
+            etiqueta: celda.etiqueta ?? '',
+          };
+        }),
       };
     } else {
       seccion.campos = (panel.items || []).map((item) => campoDesdeItem(item));

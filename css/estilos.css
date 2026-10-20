@@ -271,6 +271,12 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
   min-width: 0;
 }
 
+/* En una grilla, el navegador sigue contando el marcador y la ensancha. */
+.mosaico > li::marker,
+.leyenda-mosaico > li::marker {
+  content: none;
+}
+
 .celda-mosaico {
   min-height: 5.6rem;
   min-width: 0;
@@ -281,6 +287,13 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
   border: 1px solid var(--linea);
   border-radius: 10px;
   background: var(--tarjeta);
+}
+
+.marca-celda,
+.titulo-celda,
+.linea-celda {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .marca-celda {
@@ -295,7 +308,6 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
   font-size: 0.82rem;
   font-weight: 650;
   line-height: 1.25;
-  overflow-wrap: anywhere;
 }
 
 .linea-celda {
@@ -307,9 +319,11 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
 
 .pasos {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.22rem;
   margin-top: auto;
   padding-top: 0.3rem;
+  min-width: 0;
 }
 
 .paso {
@@ -317,7 +331,7 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
   width: 0.38rem;
   height: 0.38rem;
   border-radius: 999px;
-  background: #3a342c;
+  background: #8a8175;
   flex: none;
 }
 
@@ -354,6 +368,11 @@ th, td { text-align: left; padding: 0.45rem 0.4rem; border-bottom: 1px solid var
   border-radius: 3px;
   border: 1px solid var(--linea);
   flex: none;
+}
+
+.muestra.tono-hueco,
+.muestra.tono-apagado {
+  border-style: dashed;
 }
 
 .detalle-mosaico { margin-top: 0.85rem; }
