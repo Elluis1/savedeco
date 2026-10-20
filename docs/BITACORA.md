@@ -15,7 +15,7 @@ Qué quedó:
 - La tabla de plantas sigue, plegada, para leer la edad sin recorrer la grilla.
 - La descarga de Cookie Clicker no cambia. Si un lector no arma la suya, el mosaico se baja como tabla.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/7
 
 Próximos pasos: la bolsa se podría leer más rápido con una barra por bien, si en alguna partida los valores se pisan. Sigue pendiente el resto de la tabla de estadísticas de Cookie Clicker, y el lector de Terraria cuando haya fixtures.
 
