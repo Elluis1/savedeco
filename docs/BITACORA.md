@@ -2,6 +2,16 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-20 — Revisión del PR 9
+
+Revisión independiente del reuso del plano. El texto guardado se compara con el que pide `decodificar`: si es otro, se abre de nuevo y no se devuelve la panadería anterior. Una llamada suelta, sin un `detectar` en el mismo turno, abre el código ella misma. Si nadie pide el plano, el microturno siguiente lo suelta y no queda el string retenido.
+
+El test nuevo cronometraba medianas y exigía que el botón quedara bajo el 80% de la suma. En un CI cargado eso falla en falso. Ahora cuenta las aperturas de `abrirCodigo`. También traje `main` a esta rama: la bitácora y los casos hostiles de la segunda pasada de Romper estaban en los dos lados.
+
+PR: https://github.com/Elluis1/savedeco/pull/9
+
+Próximos pasos: los mismos de la entrada de abajo.
+
 ## 2026-10-20 — Rendimiento
 
 Medí de nuevo, con el script ampliado: además de peso, primer render y decodificación, ahora toma el HTML de cada panel (parcela, minijuegos, bolsa), la apertura de la lista de plantas y el armado de texto, CSV y JSON. La página pesa 183 KB (58 KB gzip). Creció desde el 19 por los minijuegos, la exportación y el CSS de la parcela, no por esta pasada. El primer pintado sigue en unos 40 ms. El fixture de Elluis se decodifica en 0,65 ms. La parcela son 36 casilleros y 0,1 ms de layout.

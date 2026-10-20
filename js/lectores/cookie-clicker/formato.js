@@ -144,6 +144,13 @@ function conRelleno(b64) {
 // pendiente no sostenga el string.
 let planoDelTurno = null;
 let marcaPlano = 0;
+// Cuenta cada entrada a abrirCodigo. El test del botón lo lee para trabar
+// el reuso sin depender del reloj.
+let aperturas = 0;
+
+export function aperturasDelCodigo() {
+  return aperturas;
+}
 
 function recordarPlano(texto, abierto) {
   marcaPlano += 1;
@@ -162,6 +169,7 @@ function tomarPlanoRecordado(texto) {
 }
 
 export function abrirCodigo(texto) {
+  aperturas += 1;
   const original = String(texto ?? '');
   if (original.length > LIMITE_CODIGO) {
     return { vacio: false, teniaFin: false, plano: null, demasiadoGrande: true };

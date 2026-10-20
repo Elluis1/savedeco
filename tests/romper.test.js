@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { leerMinijuego } from '../js/lectores/cookie-clicker/minijuegos.js';
-import { MENSAJE_DANADO, MENSAJE_ENORME, MENSAJE_TRUNCADO, decodificar, detectar } from '../js/lectores/cookie-clicker/formato.js';
+import { MENSAJE_DANADO, MENSAJE_ENORME, MENSAJE_TRUNCADO, aperturasDelCodigo, decodificar, detectar } from '../js/lectores/cookie-clicker/formato.js';
 import { LIMITE_CODIGO, MENSAJE_DESCONOCIDO, MENSAJE_LARGO, decodificarAutomatico, presentar } from '../js/nucleo/decodificar.js';
 import { armarArchivo, documentoDe, escaparCsv, nombreArchivo } from '../js/nucleo/exportar.js';
 import { formatearNumero } from '../js/nucleo/numeros.js';
@@ -470,47 +470,55 @@ test('una 2.053 cargada, con la bóveda llena, entra y el relleno de minijuego s
   assert.ok(html.includes('Dedo índice reforzado'));
 });
 
-function medianaDe(fn) {
-  for (let i = 0; i < 2; i += 1) fn();
-  const muestras = [];
-  for (let i = 0; i < 7; i += 1) {
-    const inicio = performance.now();
-    fn();
-    muestras.push(performance.now() - inicio);
-  }
-  muestras.sort((a, b) => a - b);
-  return muestras[3];
-}
-
 test('el botón abre el base64 una sola vez', async () => {
-  // Escapado, como el export del juego, para que abrir el código pese de verdad.
-  // El mod es relleno: pasa el tope del JSON y no se parsea.
-  const codigo = escapeComoElJuego(partida({
-    mods: `MOD:${'a'.repeat(400_000)}`,
-  }));
-  // El directo primero: si midiera después de detectar, heredaría el plano guardado.
-  const directo = medianaDe(() => decodificar(codigo));
-  const deteccion = medianaDe(() => detectar(codigo));
-  const automatico = medianaDe(() => decodificarAutomatico(codigo));
-  const junto = decodificarAutomatico(codigo);
+  // Cuenta aperturas: un umbral de milisegundos falla en un CI cargado
+  // aunque el reuso esté bien, o pasa aunque se haya abierto dos veces.
+  const horno = partida();
+  const otra = partida({ carrera: '111;222;333;Otra;seed;0,1,0,0,0,0,0' });
+
+  const antesBoton = aperturasDelCodigo();
+  const junto = decodificarAutomatico(horno);
+  assert.equal(aperturasDelCodigo() - antesBoton, 1);
   assert.equal(junto.ok, true, junto.error);
   assert.equal(junto.datos.nombre, 'Horno');
-  assert.equal(junto.datos.mods.datos[0].jsonOmitido, true);
 
-  // Sin el reuso, el automático paga la detección y la lectura (cada una abre
-  // el código) y queda cerca de la suma. Con el plano de la detección, queda
-  // bastante por debajo.
-  assert.ok(
-    automatico < (directo + deteccion) * 0.8,
-    `automático ${automatico.toFixed(2)} ms, directo ${directo.toFixed(2)} ms, detección ${deteccion.toFixed(2)} ms`,
-  );
+  // Otro texto, en el mismo turno, no hereda el plano ni la panadería.
+  detectar(horno);
+  const antesCruce = aperturasDelCodigo();
+  const cruce = decodificar(otra);
+  assert.equal(aperturasDelCodigo() - antesCruce, 1);
+  assert.equal(cruce.ok, true, cruce.error);
+  assert.equal(cruce.datos.nombre, 'Otra');
 
-  await new Promise((resolver) => {
-    setTimeout(resolver, 0);
-  });
-  const suelto = decodificar(fixture);
-  assert.equal(suelto.ok, true, suelto.error);
-  assert.equal(suelto.datos.nombre, 'Elluis');
+  // El mismo texto, enseguida, no se abre de nuevo.
+  const antesMismo = aperturasDelCodigo();
+  detectar(horno);
+  const reusado = decodificar(horno);
+  assert.equal(aperturasDelCodigo() - antesMismo, 1);
+  assert.equal(reusado.ok, true, reusado.error);
+  assert.equal(reusado.datos.nombre, 'Horno');
+
+  // Ya se consumió: la siguiente lectura suelta abre ella misma.
+  const antesSuelta = aperturasDelCodigo();
+  const suelta = decodificar(horno);
+  assert.equal(aperturasDelCodigo() - antesSuelta, 1);
+  assert.equal(suelta.datos.nombre, 'Horno');
+
+  // El microturno suelta lo que nadie pidió: el mismo texto hay que abrirlo de nuevo.
+  detectar(horno);
+  await Promise.resolve();
+  const antesMicro = aperturasDelCodigo();
+  const trasMicro = decodificar(horno);
+  assert.equal(aperturasDelCodigo() - antesMicro, 1);
+  assert.equal(trasMicro.ok, true, trasMicro.error);
+  assert.equal(trasMicro.datos.nombre, 'Horno');
+
+  // Y una partida distinta no sale con el nombre de la que quedó en el turno anterior.
+  const antesOtra = aperturasDelCodigo();
+  const elluis = decodificar(fixture);
+  assert.equal(aperturasDelCodigo() - antesOtra, 1);
+  assert.equal(elluis.ok, true, elluis.error);
+  assert.equal(elluis.datos.nombre, 'Elluis');
 });
 
 test('un payload de más de un mega, todavía bajo el tope, se rechaza rápido', { timeout: 30_000 }, () => {
