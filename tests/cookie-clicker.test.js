@@ -5,6 +5,7 @@ import { MENSAJE_LARGO, decodificarAutomatico } from '../js/nucleo/decodificar.j
 import { renderizarPaneles } from '../js/nucleo/paneles.js';
 import { logros } from '../js/lectores/cookie-clicker/catalogo.js';
 import { lector } from '../js/lectores/cookie-clicker/index.js';
+import { armarExportacion } from '../js/lectores/cookie-clicker/formato.js';
 import '../js/lectores/indice.js';
 
 const fixture = fs.readFileSync(new URL('./fixtures/luigi-cookieclicker.txt', import.meta.url), 'utf8');
@@ -79,6 +80,84 @@ test('la partida de Elluis se lee con los valores confirmados', () => {
   assert.equal(datos.efectos[0].nombre, 'Frenesí');
   assert.equal(datos.efectos[0].argumento, 7);
   assert.deepEqual(resultado.paneles.map((panel) => panel.id), lector.paneles.map((panel) => panel.id));
+
+  const jardin = datos.minijuegos.jardin;
+  assert.equal(jardin.suelo.nombre, 'Barro');
+  assert.equal(jardin.suelo.id, 0);
+  assert.equal(jardin.congelado, false);
+  assert.equal(jardin.cosechas, 0);
+  assert.equal(jardin.cosechasTotales, 19);
+  assert.equal(jardin.sacrificios, 0);
+  assert.equal(jardin.abierto, false);
+  assert.equal(jardin.semillas.length, 34);
+  assert.deepEqual(
+    jardin.semillas.filter((semilla) => semilla.desbloqueada).map((semilla) => semilla.nombre),
+    ['Trigo de panadero', 'Maíz de pulgar', 'Hierbainsolente'],
+  );
+  assert.equal(jardin.casilleros.length, 36);
+  const hierba = jardin.casilleros.find((casilla) => casilla.x === 3 && casilla.y === 0);
+  assert.equal(hierba.nombre, 'Hierbainsolente');
+  assert.equal(hierba.edad, 23);
+  assert.equal(hierba.etapa, 'Brote');
+  assert.equal(hierba.abierto, true);
+  const madura = jardin.casilleros.find((casilla) => casilla.x === 5 && casilla.y === 0);
+  assert.equal(madura.edad, 51);
+  assert.equal(madura.etapa, 'Madurez');
+  const cogollo = jardin.casilleros.find((casilla) => casilla.x === 1 && casilla.y === 1);
+  assert.equal(cogollo.edad, 0);
+  assert.equal(cogollo.etapa, 'Cogollo');
+
+  const panteon = datos.minijuegos.panteon;
+  assert.equal(panteon.ranuras[0].espiritu, 'vacía');
+  assert.equal(panteon.ranuras[1].espiritu, 'Vomitrax, espíritu de la decadencia');
+  assert.equal(panteon.ranuras[1].espirituId, 1);
+  assert.equal(panteon.ranuras[2].espiritu, 'Godzamok, espíritu de la ruina');
+  assert.equal(panteon.cambios, 0);
+  assert.equal(panteon.ultimoCambio, 1792380656643);
+
+  const grimorio = datos.minijuegos.grimorio;
+  assert.equal(grimorio.magia, 3.8853020766158295);
+  assert.equal(grimorio.hechizos, 12);
+  assert.equal(grimorio.hechizosTotales, 137);
+  assert.equal(grimorio.abierto, false);
+
+  const bolsa = datos.minijuegos.bolsa;
+  assert.equal(bolsa.oficina.nombre, 'Compañía de préstamos');
+  assert.equal(bolsa.oficina.id, 2);
+  assert.equal(bolsa.brokers, 93);
+  assert.equal(bolsa.beneficios, 0);
+  assert.equal(bolsa.estilo.nombre, 'líneas');
+  assert.equal(bolsa.bienes.length, 18);
+  assert.equal(bolsa.bienes[0].nombre, 'Cereales');
+  assert.equal(bolsa.bienes[0].valorCentesimas, 2970);
+  assert.equal(bolsa.bienes[0].valor, 29.7);
+  assert.equal(bolsa.bienes[0].modo.nombre, 'subida lenta');
+  assert.equal(bolsa.bienes[0].stock, 0);
+  assert.equal(bolsa.bienes[4].nombre, 'Frutos secos');
+  assert.equal(bolsa.bienes[4].valorCentesimas, 1582);
+  assert.equal(bolsa.bienes[4].deriva, -0.26);
+  assert.equal(bolsa.bienes[4].modo.id, 2);
+  assert.equal(bolsa.bienes[17].nombre, 'Elluis');
+  assert.equal(bolsa.bienes[17].empresa, 'Panadería de Elluis');
+  assert.equal(bolsa.bienes[17].simbolo, 'TÚ');
+  assert.equal(bolsa.bienes[17].valorCentesimas, 15676);
+  assert.equal(bolsa.bienes[17].modo.nombre, 'caótico');
+  assert.equal(bolsa.bienes[17].ticks, 496);
+
+  const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
+  assert.ok(html.includes('Hierbainsolente'));
+  assert.ok(html.includes('Vomitrax, espíritu de la decadencia'));
+  assert.ok(html.includes('Cereales'));
+  assert.equal(html.includes('Hoyo vacío'), false);
+
+  const documento = armarExportacion(datos);
+  const semillas = documento.secciones.find((seccion) => seccion.id === 'semillas');
+  assert.equal(semillas.tabla.filas.length, 34);
+  assert.equal(semillas.tabla.filas[0].desbloqueada, 'sí');
+  assert.equal(semillas.tabla.filas[2].desbloqueada, 'no');
+  const parcela = documento.secciones.find((seccion) => seccion.id === 'jardin');
+  assert.equal(parcela.tabla.filas.length, 36);
+  assert.equal(parcela.tabla.filas[0].planta, 'Hoyo vacío');
 });
 
 test('tolera saltos de línea y el código ya decodificado de la URL', () => {
@@ -222,6 +301,44 @@ test('el nombre de la panadería, la temporada y los mods no se vuelven HTML', (
   assert.ok(html.includes('<strong>&quot; onclick=alert(3)</strong>'));
   assert.ok(html.includes('&lt;img src=x onerror=alert(5)&gt;'));
   assert.equal(lector.decodificar('x'.repeat(4_000_001)).error, MENSAJE_LARGO);
+});
+
+test('un minijuego con forma rara avisa y uno vacío no inventa datos', () => {
+  const jardin = [
+    '1000:9:2000:1:3:4:1:2:3000:',
+    '10',
+    '1:10:0:0:',
+  ].join(' ');
+  const vacio = '1,1,1,1,,0,1';
+  const plano = [
+    '2.053',
+    '',
+    '111;222;333;Horno;abc;0',
+    '1',
+    '10;20',
+    [vacio, vacio, `1,1,1,1,${jardin},0,1`, vacio, vacio, '1,1,1,1,no-es-bolsa,0,1'].join(';'),
+    '11',
+    '1',
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  const datos = resultado.datos;
+  assert.equal(datos.minijuegos.jardin.suelo.nombre, 'desconocido (9)');
+  assert.equal(datos.minijuegos.jardin.congelado, true);
+  assert.equal(datos.minijuegos.jardin.cosechas, 3);
+  assert.equal(datos.minijuegos.jardin.cosechasTotales, 4);
+  assert.equal(datos.minijuegos.jardin.sacrificios, 2);
+  assert.equal(datos.minijuegos.jardin.casilleros[0].nombre, 'Trigo de panadero');
+  assert.equal(datos.minijuegos.jardin.casilleros[0].etapa, 'Cogollo');
+  assert.equal(datos.minijuegos.jardin.casilleros[0].abierto, false);
+  assert.equal(datos.minijuegos.bolsa.presente, true);
+  assert.equal(datos.minijuegos.bolsa.ok, false);
+  assert.equal(datos.minijuegos.panteon.presente, false);
+  assert.ok(resultado.advertencias.some((aviso) => aviso.includes('suelo')));
+  assert.ok(resultado.advertencias.some((aviso) => aviso.includes('La bolsa')));
+  assert.equal(resultado.advertencias.some((aviso) => aviso.includes('panteón')), false);
 });
 
 test('el logro largo usa el ampersand de la loc, no la entidad', () => {

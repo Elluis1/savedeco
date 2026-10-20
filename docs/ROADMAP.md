@@ -50,7 +50,8 @@ Universal Paperclips y A Dark Room guardan en `localStorage` y no tienen un cód
 
 ## Mejoras del lector de Cookie Clicker
 
-- Los minijuegos (jardín, bolsa, panteón, grimorio) viajan dentro del edificio y no los interpretamos.
+- Los minijuegos (jardín, bolsa, panteón, grimorio) ya se leen, con el formato del fuente.
+- Sigue sin extraerse el resto de la tabla de estadísticas: pactos, devoradores, Papá Noel, renos, bóveda, volúmenes y lo demás que el formato ya nombra.
 - El fondo, el tipo de leche y las auras del dragón quedan como id numérico. No mapeamos el nombre de cada sprite.
 - El nivel del dragón es el índice de etapa, sin el título.
 - La apariencia de Tú son siete índices de genes. No tenemos el nombre visual de cada opción.
