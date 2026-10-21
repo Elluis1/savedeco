@@ -12,8 +12,8 @@ Fuentes:
 - [`core.js`](https://github.com/nuclear-unicorn/kittensgame/blob/781e379f79f1e7512d168849cba21ed111502644/core.js). `filterMetadata`, `loadMetadata` y el save de la consola.
 - Los managers en `js/`: `resources.js`, `village.js`, `calendar.js`, `buildings.js`, `science.js`, `workshop.js`, `diplomacy.js`, `religion.js`, `space.js`, `time.js`, `challenges.js`, `prestige.js`, `achievements.js`, `stats.js`, `void.js`, `settings.js`.
 - [`lib/lz-string.js`](https://github.com/nuclear-unicorn/kittensgame/blob/781e379f79f1e7512d168849cba21ed111502644/lib/lz-string.js). Copia minificada, sin cabecera de licencia. La salida coincide con [lz-string 1.4.4](https://github.com/pieroxy/lz-string/blob/1.4.4/libs/lz-string.js).
-- [LICENSE.txt de LZString 1.4.4](https://github.com/pieroxy/lz-string/blob/1.4.4/LICENSE.txt) (WTFPL-2.0) y el [LICENSE.md](https://github.com/pieroxy/lz-string/blob/master/LICENSE.md) del repo actual (MIT). El detalle está más abajo.
-- Changelog del mismo commit: la entrada de arriba es `v 1.6.1.6 (30 Aug 2026)`. `index.html` deja `"1.6.1.0"` como reserva; el número que se muestra sale de `version.json`, y ese archivo no está en el árbol de git (lo estampa el release). `package.json` dice `"version": "14.8.0"`: es el paquete npm, no la versión del juego.
+- [LICENSE.txt de LZString 1.4.4](https://github.com/pieroxy/lz-string/blob/1.4.4/LICENSE.txt) (WTFPL-2.0). El tag 1.5.0 declara MIT en `package.json` y en el archivo `LICENSE` (no `LICENSE.md`). El [LICENSE.md](https://github.com/pieroxy/lz-string/blob/master/LICENSE.md) del repo actual (2.0.0-rc.3, revisado el 2026-10-21) también es MIT. El detalle está más abajo.
+- Changelog del mismo commit: la entrada de arriba es `v 1.6.1.6 (30 Aug 2026)`. `version.json` está en el árbol y en este commit dice `"version": "1.6.1.6"`. `index.html` deja `"1.6.1.0"` como reserva si ese JSON no carga; el comentario del HTML dice que el release lo estampa. `package.json` dice `"version": "14.8.0"`: es el paquete npm, no la versión del juego.
 - Wiki del juego, [scripts de terceros](https://wiki.kittensgame.com/en/general-information/third-party-scripts) y [bugs](https://wiki.kittensgame.com/en/general-information/bugs). Nombran el export y decodificadores de la comunidad. No describen el JSON campo por campo. La estructura sale del fuente, no de la wiki.
 - Trimps, para no confundir el sobre: `save` y `load` en [trimps.github.io/main.js](https://trimps.github.io/main.js), bajado el 2026-10-21 (`main.js?62`). No hay un commit fijado: si el juego se actualiza, hay que volver a mirar esa función.
 - El test `tests/kittens-game.test.js` arma un JSON mínimo, lo comprime y lo abre. No hay un save real con licencia libre.
@@ -32,7 +32,7 @@ Otras claves, que no son la partida:
 
 `game.wipe` borra la partida y el idioma.
 
-El export que se copia está en el textarea `#exportData`. `saveExport` le pasa la cadena ya comprimida, sin prefijo ni sufijo (`js/ui.js`, `saveExport`). El archivo que se baja es esa misma cadena, `text/plain`, nombre `Kittens Game.txt` o, si se pide el nombre largo, `Kittens Game - Run N - <año y estación>.txt` (`game.saveToFile`).
+El export que se copia está en el textarea `#exportData`. `saveExport` le pasa la cadena ya comprimida, sin prefijo ni sufijo (`js/ui.js`, `saveExport`). El archivo que se baja es esa misma cadena, `text/plain`, nombre `Kittens Game.txt`. Si se pide el nombre largo, `saveToFile` le agrega el número de run (`totalResets + 1`) y el texto de `$I("calendar.year.full")`, que recibe el año, el título de la estación y el día con `Math.floor`.
 
 La nube (KGNet, `Server.pushSave`) manda otra variante: el mismo JSON, comprimido en UTF-16. Dropbox ya no está: el changelog 1.6.1.6 lo saca y en este commit no hay referencias a Dropbox en el JS.
 
@@ -95,7 +95,7 @@ Si no, se le sacan los espacios (el camino del import) y se prueba `decompressFr
 
 Si el Base64 no abre un `{`, se prueba `decompressFromUTF16` sobre el texto original, sin sacarle los espacios. Un `{` al principio es el JSON pelado de Kittens. Trimps no escribe ese UTF-16 en la función que miramos.
 
-El test traba las cuatro: Base64 de Kittens, JSON pelado, UTF-16, Base64 de un Trimps mínimo, y un texto con `!END!`. También traba que el detector de Cookie Clicker que ya está en la página devuelve menos de 0,5 con esos tres sobres de Kittens, así que hoy caen en «no reconocí este texto».
+El test traba el Base64 de Kittens, el JSON pelado, el UTF-16, un Base64 de Trimps mínimo y un texto con `!END!`. También traba que el detector de Cookie Clicker que ya está en la página devuelve menos de 0,5 con esos tres sobres de Kittens, así que hoy caen en «no reconocí este texto».
 
 Un save viejo de Kittens puede no traer `saveVersion`. `migrateSave` trata `undefined` como 1. En ese caso alcanzan las claves de manager (`resources` array y `village`, por ejemplo). No vimos un archivo de esa época.
 
@@ -116,8 +116,8 @@ El algoritmo es el de Pieroxy, versión 1.4.4. En corto:
 Licencia, verificada el 2026-10-21:
 
 - El `lib/lz-string.js` del juego no trae copyright. Lo comparamos contra el 1.4.4 publicado: misma salida en cadena vacía, en el JSON mínimo, en texto con `ñ` y en un JSON de varios miles de caracteres, tanto en Base64 como en UTF-16.
-- El `package.json` del 1.4.4 dice `"license": "WTFPL"`. El [LICENSE.txt](https://github.com/pieroxy/lz-string/blob/1.4.4/LICENSE.txt) es la Do What The Fuck You Want To Public License, versión 2, copyright 2013 Pieroxy. El encabezado del fuente lo repite.
-- El repo actual (1.5.0) publica MIT en `LICENSE.md`. En las mismas muestras, el 1.5.0 escribió el mismo Base64 y el mismo UTF-16 que el 1.4.4. No hace falta la reescritura en TypeScript: con el 1.4.4 el navegador abre lo que escribe el juego.
+- El `package.json` del 1.4.4 dice `"license": "WTFPL"`. El [LICENSE.txt](https://github.com/pieroxy/lz-string/blob/1.4.4/LICENSE.txt) es la Do What The Fuck You Want To Public License, versión 2, copyright 2013 Pieroxy. El encabezado del fuente lo repite. El port de `tests/kittens-lz.js` lleva ese encabezado.
+- El tag 1.5.0 declara `"license": "MIT"` y el archivo se llama `LICENSE`, no `LICENSE.md`. El encabezado del `libs/lz-string.js` de ese tag sigue diciendo WTFPL. En las mismas muestras, el 1.5.0 escribió el mismo Base64 y el mismo UTF-16 que el 1.4.4. El repo actual, revisado el 2026-10-21, es el 2.0.0-rc.3 y publica MIT en `LICENSE.md`. No hace falta esa reescritura en TypeScript: con el 1.4.4 el navegador abre lo que escribe el juego.
 
 La WET PAWS del juego no cubre esta librería. El port atribuye a Pieroxy y se queda con el texto del 1.4.4, que es el que está en el juego.
 
@@ -138,12 +138,12 @@ La WET PAWS del juego no cubre esta librería. El port atribuye a Pieroxy y se q
 | 6 → 8 | `on = val` en `religion.zu`, `religion.tu`, `time.usedCryochambers`, `time.cfu` y `time.vsu`. No hay escalón 7. |
 | 7 | `migrateSave` no lo nombra. Si apareciera, se queda en 7. No vimos un save así. |
 | 8 → 9 | Si no hay `challenges`, queda `[]`. `currentChallenge` pasa a `null`. |
-| 9 → 10 | En buildings, `unlockable` copia a `unlocked` y `unlocked` pasa a `false`. Si `rorschachMission` tiene `on == 1`, se agrega `centaurusSystemMission`. |
+| 9 → 10 | En buildings, `unlockable` recibe lo que valía `unlocked`, y `unlocked` pasa a `false`. Si `rorschachMission` tiene `on == 1`, se agrega `centaurusSystemMission`. |
 | 10 → 11 | Todos los recursos quedan con `unlocked: false`. |
 | 11 → 12 | Si el upgrade de religión `transcendence` tiene `on == 1`, se agrega el desafío `atheism` con `unlocked: true`. |
 | 12 → 13 | Los transcendence upgrades se desbloquean según el tier y `religion.tcratio`. Este paso llama a `getUnlimitedDR` y a `religion.getTU` del juego en marcha. No es una función pura del JSON. |
 | 13 → 14 | El desafío `atheism` queda con `unlocked: false`, salvo que la tech `voidSpace` esté `researched`. |
-| 14 → 15 | En los buildings de cada planeta, `unlockable` copia a `unlocked`, o queda `false` si `unlocked` no estaba. |
+| 14 → 15 | En los buildings de cada planeta, `unlockable` recibe el valor de `unlocked` si ese campo estaba. Si no estaba, `unlockable` queda en `false`. Este escalón no pisa `unlocked`. |
 
 Del 15 en adelante, en este commit, no hay otro escalón. Un `saveVersion` mayor a 15 no lo migra nadie: `load` llama igual a `migrateSave`, la función no entra a ningún `if` y el objeto sigue en ese número. Un lector avisa y muestra los campos que ya conoce.
 
@@ -189,7 +189,7 @@ Lo escribe `game.save` y lo lee el bloque de `load` que mira `saveData.game`.
 | Campo | Qué es |
 | --- | --- |
 | `isCMBREnabled` | Bonus viejo de radiación de fondo. Al cargar, si falta, queda `true`. |
-| `colorScheme` | Id de tema. `null` si no hay. Los ids de fábrica están en `config.js`: `default` más `dark`, `grassy`, `sleek`, `black`, `wood`, `bluish`, `grayish`, `greenish`, `tombstone`, `spooky`. Un tema desbloqueado después puede ser otro string. |
+| `colorScheme` | Id de tema. `null` si no hay. En `config.js`, `defaultSchemes` es dark, grassy, sleek, black, wood, bluish, grayish, greenish, tombstone, spooky. `schemes` sigue con gold, space, school, fluid, vessel, minimalist, oil, unicorn, anthracite, chocolate, vintage, computer, arctic, cyber, factory, catnip, dune. La UI antepone `default`. Un id fuera de esa lista igual puede aparecer si un script lo desbloqueó. |
 | `unlockedSchemes` | Array de ids de tema. |
 | `karmaKittens` | Contador de karma. Número. |
 | `karmaZebras` | Igual, para cebras. |
@@ -254,7 +254,7 @@ Forma comprimida. Los valores falsy no se escriben.
 | Campo | Qué es |
 | --- | --- |
 | `ssn` | Entero. Siete números de 0 a 99 empaquetados con offset 100. Ver abajo. |
-| `skills` | Un número, si todos los oficios tienen la misma habilidad, o un array en el orden de `jobNames`. Cada valor va redondeado a un decimal y no pasa de 20001. |
+| `skills` | Un número, si todos los oficios tienen la misma habilidad, o un array en el orden de `jobNames`. Cada valor se guarda redondeado a un decimal. Al cargar, el juego lo capa en 20001. |
 | `exp` | Experiencia, un decimal. Se omite si es 0. |
 | `job` | Índice en `jobNames`. Se omite si no tiene oficio. |
 | `engineerSpeciality` | Id de oficio de ingeniero, o ausente. |
@@ -264,7 +264,7 @@ Forma comprimida. Los valores falsy no se escriben.
 | `isAdopted` | `true`, o ausente. |
 | `favorite` | `true`, o ausente. |
 | `seed` | Entero de 0 a 999999, si el gatito nació con semilla. |
-| `name`, `surname` | Solo si el nombre no está en la lista de fábrica. |
+| `name`, `surname` | Si el nombre o el apellido no están en la lista, se escriben los dos strings. El `ssn` usa 0 en el índice que no encontró. |
 
 El `ssn` se arma de atrás para adelante: `resultado = resultado * 100 + valor`. Al abrir, el primer resto es el primer campo. Los siete, en orden: índice de nombre, índice de apellido, edad, índice de rasgo, color, variedad, rareza. El comentario del fuente avisa el techo: con offset 100, siete enteros de 0 a 99 entran en un entero seguro de JS (2^53). Un octavo ya no. El test empaqueta y abre un `ssn`.
 
@@ -276,7 +276,7 @@ Rasgos, en orden: scientist, manager, engineer, merchant, wise, metallurgist, ch
 
 Color, variedad y rareza son enteros. En la generación, 0 es el caso común. Color 1 a 6 es uno de los seis colores primarios del comentario; el array `colors` del fuente tiene 7 entradas, así que el mapeo fino de cada índice al hex queda en ese array y no lo reescribimos acá. Variedad 0 es ninguna; el array `varieties` es dual, tabby, torbie, calico, spots. Rareza 0 es ninguna. El generador sube a 1, 2 o 3.
 
-Si hay `seed`, el nombre, el apellido, la edad, el rasgo, el color, la variedad y la rareza se regeneran con un LCG (`state = state * 16807 % 2147483647`, semilla normalizada a 0..999999). El `ssn` se escribe igual, para que un cliente viejo pueda abrir el archivo. `load` prefiere la semilla.
+Si hay `seed`, el nombre, el apellido, la edad, el rasgo, el color, la variedad y la rareza se regeneran. La semilla se normaliza a un entero de 0 a 999999. El estado arranca en `(seed + 1) % 2147483647` y cada paso hace `state = state * 16807 % 2147483647`. El número que sale de ahí se pasa a `Math.floor((state - 1) / 2147483646 * ratio)`, donde `ratio` es el tope del sorteo. El `ssn` se escribe igual, para que un cliente viejo pueda abrir el archivo. `load` prefiere la semilla.
 
 Forma sin comprimir, la de un save viejo o la de una reserva con `compressSaveFile` en false: `skills` es un objeto por nombre de oficio (solo habilidades mayores a 0, un decimal), `job` es el string del oficio, y o bien hay `seed`, o bien hay `name`, `surname`, `age`, `color`, `variety`, `rarity` y `trait: { name }`. El resto de los flags coincide.
 
@@ -318,11 +318,11 @@ Los grupos de la interfaz (`food`, `population`, `science` y el resto) no se gua
 
 `hideResearched`, `policyToggleResearched` y `policyToggleBlocked` son booleanos de la interfaz.
 
-`techs` guarda `name`, `unlocked`, `researched` de cada tecnología. `policies` guarda `name`, `unlocked`, `blocked`, `researched`. En este commit el primer nivel de `techs` tiene 60 entradas y el de `policies`, 37. El id es el `name` de cada objeto. No copiamos la lista larga: el día que se escriba el lector se lee de ese array, y un release nuevo la alarga.
+`techs` guarda `name`, `unlocked`, `researched` de cada tecnología. `policies` guarda `name`, `unlocked`, `blocked`, `researched`. En este commit el array `techs` tiene 62 entradas y el de `policies`, 64. Dos políticas están comentadas en el fuente (`spaceBasedTerraforming` y `clearSkies`) y no entran en las 64. El id es el `name` de cada objeto. No copiamos la lista larga: el día que se escriba el lector se lee de ese array, y un release nuevo la alarga.
 
 ### `workshop`
 
-`hideResearched`. `upgrades` y `zebraUpgrades` guardan `name`, `unlocked`, `researched`. `crafts` guarda `name`, `unlocked`, `value` (cuántos se fabricaron por el botón, no el stock: el stock es el recurso) y `progress`. En este commit hay 132 upgrades de primer nivel y 8 de cebra: darkRevolution, darkBrew, zebraTrappers, reforgedOutposts, whispers, minerologyDepartment, bloodstoneInstitute, rangefinders. Las recetas de `crafts` coinciden con los recursos fabricables (wood, beam, slab, y el resto hasta tMythril).
+`hideResearched`. `upgrades` y `zebraUpgrades` guardan `name`, `unlocked`, `researched`. `crafts` guarda `name`, `unlocked`, `value` (cuántos se fabricaron por el botón, no el stock: el stock es el recurso) y `progress`. En este commit el array `upgrades` tiene 143 entradas y el de `zebraUpgrades`, 8: darkRevolution, darkBrew, zebraTrappers, reforgedOutposts, whispers, minerologyDepartment, bloodstoneInstitute, rangefinders. Las recetas de `crafts`, en el orden del array, son wood, beam, slab, plate, steel, concrate, gear, alloy, eludium, scaffold, ship, tanker, kerosene, plastic, microchip, parchment, manuscript, compedium, blueprint, thorium, megalith, bloodstone, tMythril.
 
 ### `diplomacy`
 
@@ -352,7 +352,7 @@ Religión: solarchant, scholasticism, goldenSpire, sunAltar, stainedGlass, solar
 
 Trascendencia: blackObelisk, blackNexus, blackCore, singularity, blackLibrary, blackRadiance, blazar, darkNova, mausoleum, holyGenocide, darkParacosm. Son 11. `darkParacosm` está en el array, después de holyGenocide.
 
-Pactos: pactOfCleansing, pactOfDestruction, pactOfExtermination, pactOfPurity, pactOfArcane, pactOfChronicler.
+Pactos: pactOfCleansing, pactOfDestruction, pactOfExtermination, pactOfPurity, pactOfArcane, pactOfChronicler, payDebt, fractured. Son 8. `payDebt` y `fractured` están marcados `special` en el fuente y viajan en el mismo array.
 
 ### `space`
 
@@ -411,7 +411,7 @@ Un save anterior al escalón 9 puede traer `currentChallenge` con el nombre. `lo
 
 `achievements` es un array con `name`, `unlocked`, `starUnlocked`. En este commit hay 31, de `theElderLegacy` a `betterSafeThanSorry`. `starUnlocked` es la estrella, un bool.
 
-`ach.badgesUnlocked` es el bool de «ya se mostró el panel de insignias». `ach.badges` guarda `name` y `unlocked`. Las insignias de este commit: lotus, ivoryTower, useless, beta, silentHill, evergreen, deadSpace, reginaNoctis, ghostInTheMachine, abOwo, cleanPaws, sequenceBreak, fantasticFurColor, whatYearIsIt, tardis, wheredThisComeFrom, lostDates, buffet, newHome, betterSafeThanSorry. Son 20. `lostDates` cambia el título en memoria al azar; el save guarda el `name`, no ese título.
+`ach.badgesUnlocked` es el bool de «ya se mostró el panel de insignias». `ach.badges` guarda `name` y `unlocked`. Las insignias de este commit: lotus, ivoryTower, useless, beta, silentHill, evergreen, deadSpace, reginaNoctis, ghostInTheMachine, abOwo, cleanPaws, sequenceBreak, fantasticFurColor, whatYearIsIt, tardis, wheredThisComeFrom, lostDates, buffet, newHome, betterSafeThanSorry, soLongAndThanksForAllTheHay. Son 21. `lostDates` cambia el título en memoria al azar; el save guarda el `name`, no ese título.
 
 ### `stats` y `statsCurrent`
 
@@ -455,7 +455,7 @@ Los títulos en español están en `res/i18n/es.json` del juego, bajo la licenci
 
 Se puede leer en el navegador, en la página estática que ya tenemos, sin dependencias. El gesto es el mismo que Cookie Clicker: pegar un texto. No hace falta el camino de bytes de Terraria.
 
-El port de LZString 1.4.4 es vanilla. El test redondea un JSON mínimo contra la cadena que produce el 1.4.4, abre un Base64 con saltos, distingue el UTF-16, distingue un Trimps mínimo y empaqueta un `ssn`. Doscientos gatitos sintéticos vuelven idénticos y el Base64 queda debajo del tope de 4 millones de caracteres de la página.
+El port de LZString 1.4.4 es vanilla. El test hace la ida y vuelta de un JSON mínimo contra la cadena que produce el 1.4.4, abre un Base64 con saltos, distingue el UTF-16, distingue un Trimps mínimo y empaqueta un `ssn`. Doscientos gatitos sintéticos vuelven idénticos y el Base64 queda debajo del tope de 4 millones de caracteres de la página.
 
 Tamaños, medidos el 2026-10-21 con ese mismo port, sobre un JSON armado con los catálogos de este commit y valores en cero. No es un save de una persona.
 

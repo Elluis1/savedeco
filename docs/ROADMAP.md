@@ -38,7 +38,7 @@ Qué se puede leer:
 
 - El export del portapapeles y el archivo `Kittens Game.txt` son `LZString.compressToBase64` del JSON de `game.save()`. No es el Base64 de Cookie Clicker: `atob` no devuelve el JSON. El alfabeto es `A–Z`, `a–z`, `0–9`, `+`, `/` y `=`.
 - `localStorage["com.nuclearunicorn.kittengame.savedata"]` guarda el JSON pelado si el `stringify` no pasa de 5.000.000 de caracteres y `opts.forceLZ` está apagado. Si no, guarda `LZString.compressToUTF16`. La nube (KGNet) manda esa misma variante UTF-16.
-- El port de LZString 1.4.4 entra en vanilla, sin dependencia. La licencia de esa versión es WTFPL-2.0. El 1.5.0 publica MIT y, en las muestras, escribió la misma cadena. El test `tests/kittens-game.test.js` redondea un JSON mínimo contra la salida del 1.4.4.
+- El port de LZString 1.4.4 entra en vanilla, sin dependencia. La licencia de esa versión es WTFPL-2.0 y el port lleva ese encabezado. El tag 1.5.0 declara MIT y, en las muestras, escribió la misma cadena. El repo actual es el 2.0.0-rc.3, también MIT. El test `tests/kittens-game.test.js` hace la ida y vuelta de un JSON mínimo contra la salida del 1.4.4.
 - El objeto trae `saveVersion` (hoy 15), recursos, aldea y gatitos, calendario, edificios, ciencia, taller, diplomacia, religión, espacio, tiempo, desafíos, prestigio, logros, estadísticas y void. El detalle, campo por campo, está en el formato.
 - Un export de este commit ya viene en 15 y se muestra sin migrar. `migrateSave` cubre los escalones del 1 al 15, con un hueco en el 7. El escalón 12 llama a funciones del juego en marcha y no es una función pura del JSON.
 

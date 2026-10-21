@@ -124,7 +124,7 @@ test('localStorage grande va en UTF-16 y el atajo de Base64 no lo abre', () => {
 });
 
 test('el import recorta los blancos y parte un UTF-16 que los usa como símbolo', () => {
-  // compressToUTF16 siempre cierra con un espacio. En un blob corto ese
+  // compressToUTF16 siempre cierra con un espacio. En una cadena corta ese
   // cierre es el único blanco, y sacarlo igual deja un JSON. Cuando un
   // símbolo de dato cae en un blanco que el import recorta (acá U+2009), el
   // replace del textarea corre el flujo. localStorage no recorta.

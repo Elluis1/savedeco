@@ -1,11 +1,18 @@
-// Descompresor y compresor de LZString 1.4.4, el que usa Kittens Game.
-// El archivo lib/lz-string.js del juego (commit 781e379) no trae cabecera.
-// Su salida coincide con lz-string 1.4.4 de Pieroxy, licencia WTFPL-2.0:
-// https://github.com/pieroxy/lz-string/blob/1.4.4/LICENSE.txt
-// Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+// Compresor y descompresor de LZString 1.4.4, el que coincide con Kittens Game.
+// El lib/lz-string.js del juego (commit 781e379) no trae cabecera. Este archivo
+// no sale de ahí: el juego es WET PAWS. Sale de pieroxy/lz-string 1.4.4.
 //
-// El repo actual de LZString (1.5.0) publica MIT y, en las muestras del
-// 2026-10-21, escribe el mismo Base64 y el mismo UTF-16 que el 1.4.4.
+// Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+// This work is free. You can redistribute it and/or modify it
+// under the terms of the WTFPL, Version 2
+// For more information see LICENSE.txt or http://www.wtfpl.net/
+// https://github.com/pieroxy/lz-string/blob/1.4.4/libs/lz-string.js
+// https://github.com/pieroxy/lz-string/blob/1.4.4/LICENSE.txt
+//
+// El tag 1.5.0 declara MIT en package.json y en el archivo LICENSE (no
+// LICENSE.md). El encabezado del .js de ese tag sigue diciendo WTFPL, y en
+// las muestras del 2026-10-21 escribió la misma cadena que el 1.4.4.
+// El repo actual, 2.0.0-rc.3, publica MIT en LICENSE.md.
 // Este archivo es solo para el test. La página no lo carga.
 
 const fromCharCode = String.fromCharCode;
@@ -31,7 +38,7 @@ function compress(uncompressed, bitsPerChar, getCharFromInt) {
         context_c="",
         context_wc="",
         context_w="",
-        context_enlargeIn= 2, // Compensate for the first entry which should not count
+        context_enlargeIn= 2, // Compensa la primera entrada, que no cuenta
         context_dictSize= 3,
         context_numBits= 2,
         context_data=[],
@@ -127,13 +134,13 @@ function compress(uncompressed, bitsPerChar, getCharFromInt) {
           context_enlargeIn = Math.pow(2, context_numBits);
           context_numBits++;
         }
-        // Add wc to the dictionary.
+        // Agrega wc al diccionario.
         context_dictionary[context_wc] = context_dictSize++;
         context_w = String(context_c);
       }
     }
 
-    // Output the code for w.
+    // Escribe el código de w.
     if (context_w !== "") {
       if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate,context_w)) {
         if (context_w.charCodeAt(0)<256) {
@@ -214,7 +221,7 @@ function compress(uncompressed, bitsPerChar, getCharFromInt) {
       }
     }
 
-    // Mark the end of the stream
+    // Marca el fin del flujo
     value = 2;
     for (i=0 ; i<context_numBits ; i++) {
       context_data_val = (context_data_val << 1) | (value&1);
@@ -228,7 +235,7 @@ function compress(uncompressed, bitsPerChar, getCharFromInt) {
       value = value >> 1;
     }
 
-    // Flush the last char
+    // Vacía el último carácter
     while (true) {
       context_data_val = (context_data_val << 1);
       if (context_data_position == bitsPerChar-1) {
@@ -387,7 +394,7 @@ function decompress(length, resetValue, getNextValue) {
       }
       result.push(entry);
 
-      // Add w+entry[0] to the dictionary.
+      // Agrega w más el primer carácter de entry al diccionario.
       dictionary[dictSize++] = w + entry.charAt(0);
       enlargeIn--;
 
