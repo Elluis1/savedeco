@@ -16,7 +16,7 @@ Qué quedó:
 
 Tamaños de un catálogo sintético en cero: 22 KB de JSON y 6,5 KB de Base64 sin gatitos. Con 40.000 gatitos comprimidos, 3,1 MB de JSON y 142 KB de Base64. Entran en el tope de la página.
 
-PR: se anota al abrir.
+PR: https://github.com/Elluis1/savedeco/pull/10
 
 Próximos pasos: el lector de Kittens Game (detectar, el port en un módulo de la página, paneles con el `name` interno). La próxima investigación de formato es Trimps. El lector de Terraria sigue esperando el camino de bytes.
 
