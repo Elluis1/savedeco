@@ -1,6 +1,6 @@
 # Roadmap
 
-Savedeco arranca con Cookie Clicker porque el export está documentado y el fuente es público. Terraria es la segunda prioridad: el formato ya está investigado y el lector todavía no. Estos son los candidatos, y lo que todavía falta en el lector actual.
+Savedeco arranca con Cookie Clicker porque el export está documentado y el fuente es público. Terraria y Kittens Game ya tienen el formato investigado y el lector todavía no. Estos son los candidatos, y lo que todavía falta en el lector actual.
 
 ## Exportar la partida
 
@@ -32,9 +32,27 @@ Qué falta para el lector: el camino de bytes en la página, y un `.plr` y un `.
 
 ### Kittens Game
 
-Viable. El juego es de código abierto ([nuclearunicorn/kittensgame](https://github.com/nuclearunicorn/kittensgame)). `game.save()` junta un JSON con el estado de cada manager y lo comprime con `LZString.compressToBase64`. En el navegador queda en `localStorage` bajo `com.nuclearunicorn.kittengame.savedata`. El export que se copia es esa misma cadena. Para leerlo hay que invertir `LZString.decompressFromBase64` y después pasar por las migraciones de versión, que el juego aplica en `migrateSave`. Conviene portar el descompresor a vanilla, sin sumar una dependencia.
+Viable. El formato está documentado en [el formato](FORMATOS/kittens-game.md). El lector no está escrito. El repo público es [nuclear-unicorn/kittensgame](https://github.com/nuclear-unicorn/kittensgame) (el enlace sin guión responde 404), commit `781e379` del 31 de agosto de 2026. La licencia del juego es WET PAWS: se describe el comportamiento y no se copia código ni `res/i18n/`.
 
-Fuente: el módulo de guardado del repo y la descripción del flujo en la wiki del proyecto (JSON, después LZString a Base64).
+Qué se puede leer:
+
+- El export del portapapeles y el archivo `Kittens Game.txt` son `LZString.compressToBase64` del JSON de `game.save()`. No es el Base64 de Cookie Clicker: `atob` no devuelve el JSON. El alfabeto es `A–Z`, `a–z`, `0–9`, `+`, `/` y `=`.
+- `localStorage["com.nuclearunicorn.kittengame.savedata"]` guarda el JSON pelado si el `stringify` no pasa de 5.000.000 de caracteres y `opts.forceLZ` está apagado. Si no, guarda `LZString.compressToUTF16`. La nube (KGNet) manda esa misma variante UTF-16.
+- El port de LZString 1.4.4 entra en vanilla, sin dependencia. La licencia de esa versión es WTFPL-2.0. El 1.5.0 publica MIT y, en las muestras, escribió la misma cadena. El test `tests/kittens-game.test.js` redondea un JSON mínimo contra la salida del 1.4.4.
+- El objeto trae `saveVersion` (hoy 15), recursos, aldea y gatitos, calendario, edificios, ciencia, taller, diplomacia, religión, espacio, tiempo, desafíos, prestigio, logros, estadísticas y void. El detalle, campo por campo, está en el formato.
+- Un export de este commit ya viene en 15 y se muestra sin migrar. `migrateSave` cubre los escalones del 1 al 15, con un hueco en el 7. El escalón 12 llama a funciones del juego en marcha y no es una función pura del JSON.
+
+Riesgos:
+
+- Cookie Clicker se distingue por `!END!`. Trimps usa el mismo `compressToBase64` y, una vez abierto, se distingue por `global` contra `saveVersion`. El detector de Cookie Clicker que ya está en la página devuelve menos de 0,5 con los tres sobres de Kittens.
+- El Base64 se abre sacando los blancos. El UTF-16 se prueba con los blancos adentro: un espacio o un U+2009 puede ser un símbolo del alfabeto. El import del textarea recorta `\s` y por eso un UTF-16 con un símbolo en blanco no entra por ahí. `localStorage` sí lo abre.
+- Un JSON pelado no entra por el textarea del juego. Un lector de la página tiene que aceptarlo igual, porque es lo que hay en `localStorage` cuando la partida es chica.
+- Tamaños medidos con catálogos en cero, no con una partida real: sin gatitos, 22 KB de JSON y 6,5 KB de Base64. Con 40.000 gatitos comprimidos, 3,1 MB de JSON y 142 KB de Base64. Entran en el tope de 4 millones de caracteres de la página. El grueso es la aldea.
+- Un `saveVersion` distinto de 15 se avisa. Migrar un save viejo, sobre todo el escalón 12, puede esperar.
+- Los `name` se muestran crudos: `es.json` es WET PAWS. `motdContent` puede traer HTML y va escapado. `telemetry.guid` no va a un panel.
+- No confirmamos el binario de las tiendas. En este commit el `save` es el mismo para web, mobile y steam.
+
+Qué falta para el lector: el módulo `js/lectores/kittens-game/`, registrarlo, mover el port de LZString a un módulo que cargue la página, y los paneles de la lista del formato. No hace falta un save real para la primera versión. El sintético cubre el sobre.
 
 ### Trimps
 
@@ -61,6 +79,6 @@ Universal Paperclips y A Dark Room guardan en `localStorage` y no tienen un cód
 
 ## Próxima investigación de formato
 
-Cookie Clicker ya tiene lector. Terraria ya tiene el formato documentado. La próxima corrida de este bot puede investigar un juego nuevo.
+Cookie Clicker ya tiene lector. Terraria y Kittens Game ya tienen el formato documentado. La próxima corrida de este bot puede investigar un juego nuevo.
 
-El que sigue es **Kittens Game**. El fuente es público, el export es un JSON comprimido con LZString y entra por el mismo gesto de pegar un texto. No pide el camino de bytes que Terraria va a necesitar para implementarse. Trimps queda como alternativa parecida si Kittens ya estuviera escrito.
+El que sigue es **Trimps**. El fuente está publicado, el export también es `LZString.compressToBase64` de un JSON, y después de abrirlo se distingue de Kittens por el objeto `global`. Antimatter Dimensions queda como alternativa si Trimps ya estuviera escrito: el sobre cambia según la plataforma, y hay que leer la función de export antes de prometer un prefijo.

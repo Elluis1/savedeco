@@ -2,6 +2,24 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-10-21 — Investigador de formatos
+
+Investigué el export de Kittens Game en el fuente público, commit `781e379` de [nuclear-unicorn/kittensgame](https://github.com/nuclear-unicorn/kittensgame) (31 de agosto de 2026). El documento está en [docs/FORMATOS/kittens-game.md](FORMATOS/kittens-game.md). El lector no se escribió: esta corrida es la investigación.
+
+Qué quedó:
+
+- Tres sobres del mismo JSON. El portapapeles y el archivo son `LZString.compressToBase64`. `localStorage` guarda el JSON pelado, o `LZString.compressToUTF16` si el `stringify` pasa de 5 millones de caracteres o si `forceLZ` está prendido. La nube manda ese UTF-16.
+- El objeto, manager por manager: recursos, aldea y gatitos (el `ssn` empaqueta nombre, apellido, edad, rasgo, color, variedad y rareza), calendario, edificios, ciencia, taller, diplomacia, religión, espacio, tiempo, desafíos, prestigio, logros, estadísticas y void. `migrateSave` lleva un save sin versión hasta el esquema 15, con un hueco en el 7. El `1.6.1.6` del changelog es la versión del juego y no viaja en el archivo.
+- Cómo se separa de Cookie Clicker (cierra con `!END!`) y de Trimps (después de abrir, `global` contra `saveVersion`). El detector de Cookie Clicker que ya está devuelve menos de 0,5 con los tres sobres.
+- Un port vanilla de LZString 1.4.4 para el test. La licencia de esa versión es WTFPL-2.0. El 1.5.0 publica MIT y en las muestras escribió la misma cadena. El juego es WET PAWS: no se copió código ni las traducciones.
+- `tests/kittens-game.test.js` arma el JSON en memoria, redondea la compresión contra la cadena del 1.4.4 y distingue los sobres. No hay un save real con licencia libre.
+
+Tamaños de un catálogo sintético en cero: 22 KB de JSON y 6,5 KB de Base64 sin gatitos. Con 40.000 gatitos comprimidos, 3,1 MB de JSON y 142 KB de Base64. Entran en el tope de la página.
+
+PR: se anota al abrir.
+
+Próximos pasos: el lector de Kittens Game (detectar, el port en un módulo de la página, paneles con el `name` interno). La próxima investigación de formato es Trimps. El lector de Terraria sigue esperando el camino de bytes.
+
 ## 2026-10-20 — Revisión del PR 9
 
 Revisión independiente del reuso del plano. El texto guardado se compara con el que pide `decodificar`: si es otro, se abre de nuevo y no se devuelve la panadería anterior. Una llamada suelta, sin un `detectar` en el mismo turno, abre el código ella misma. Si nadie pide el plano, el microturno siguiente lo suelta y no queda el string retenido.
