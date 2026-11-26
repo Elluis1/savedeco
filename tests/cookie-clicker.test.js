@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { MENSAJE_LARGO, decodificarAutomatico } from '../js/nucleo/decodificar.js';
 import { renderizarPaneles } from '../js/nucleo/paneles.js';
-import { logros } from '../js/lectores/cookie-clicker/catalogo.js';
+import { logros, mejoras } from '../js/lectores/cookie-clicker/catalogo.js';
+import { AURAS, ETAPA_AURA_SECUNDARIA, ETAPAS_DRAGON, LECHES, NIVELES_SANTA } from '../js/lectores/cookie-clicker/especiales.js';
 import { lector } from '../js/lectores/cookie-clicker/index.js';
 import { armarExportacion } from '../js/lectores/cookie-clicker/formato.js';
 import '../js/lectores/indice.js';
@@ -45,6 +46,31 @@ test('la partida de Elluis se lee con los valores confirmados', () => {
   assert.equal(datos.tipoTerron.nombre, 'normal');
   assert.equal(datos.temporada.id, 'halloween');
   assert.equal(datos.temporada.nombre, 'Halloween');
+
+  assert.equal(datos.promesas, 15);
+  assert.equal(datos.promesaFotogramas, 45496);
+  assert.equal(datos.galletasAbsorbidas, 5.283036965282827e49);
+  assert.equal(datos.devoradoresExplotados, 27);
+  assert.equal(datos.santa.id, 0);
+  assert.equal(datos.santa.nombre, 'Tubo de ensayo navideño');
+  assert.equal(datos.renos, 94);
+  assert.equal(datos.devoradores.cantidad, 0);
+  assert.equal(datos.devoradores.galletas, 0);
+  assert.equal(datos.devoradores.brillantes, 0);
+  assert.equal(datos.devoradores.galletasBrillantes, 0);
+  assert.equal(datos.nivelDragon.id, 27);
+  assert.equal(datos.nivelDragon.nombre, 'Krumblor, dragón de galleta');
+  assert.equal(datos.nivelDragon.accion, 'Tu dragón está adiestrado del todo.');
+  assert.equal(datos.auraDragon.id, 0);
+  assert.equal(datos.auraDragon.nombre, 'No hay aura');
+  assert.equal(datos.auraDragon2.nombre, 'No hay aura');
+  assert.equal(datos.volumen, 5);
+  assert.equal(datos.volumenMusica, 0);
+  assert.equal(datos.leche.id, 15);
+  assert.equal(datos.leche.nombre, 'Leche de Midas');
+  assert.equal(datos.boveda.entradas.length, 0);
+  assert.equal(datos.boveda.omitida, false);
+  assert.equal(resultado.advertencias.length, 0);
 
   assert.equal(datos.edificios.length, 20);
   assert.equal(datos.edificios[0].nombre, 'Cursor');
@@ -162,6 +188,16 @@ test('la partida de Elluis se lee con los valores confirmados', () => {
   assert.ok(html.includes('Ver las 16 plantas'));
   assert.ok(html.includes('Vomitrax, espíritu de la decadencia'));
   assert.ok(html.includes('Cereales'));
+  assert.ok(html.includes('Leche de Midas'));
+  assert.ok(html.includes('Krumblor, dragón de galleta'));
+  assert.ok(html.includes('Tu dragón está adiestrado del todo.'));
+  assert.ok(html.includes('No hay aura'));
+  assert.ok(html.includes('Tubo de ensayo navideño'));
+  assert.ok(html.includes('25 min 17 s'));
+  assert.ok(html.includes('La bóveda no esconde mejoras.'));
+  assert.ok(html.includes('Un 0 guardado se queda en 0.'));
+  assert.equal(html.includes('como ausente'), false);
+  assert.equal(html.includes('<script'), false);
 
   const documento = armarExportacion(datos);
   const semillas = documento.secciones.find((seccion) => seccion.id === 'semillas');
@@ -407,4 +443,104 @@ test('el logro largo usa el ampersand de la loc, no la entidad', () => {
   }], (valor) => String(valor));
   assert.ok(html.includes('Southmayd &amp; Choate'));
   assert.equal(html.includes('&amp;amp;'), false);
+});
+
+test('los nombres de leche, Papá Noel, auras y dragón siguen a la loc', () => {
+  assert.equal(LECHES.length, 35);
+  assert.equal(LECHES[15], 'Leche de Midas');
+  assert.equal(LECHES[31], 'Melon milk');
+  assert.equal(LECHES[32], 'Blackcurrant milk');
+  assert.equal(NIVELES_SANTA.length, 15);
+  assert.equal(NIVELES_SANTA[10], 'Nick');
+  assert.equal(NIVELES_SANTA[14], 'Papá Noel final');
+  assert.equal(AURAS.length, 22);
+  assert.equal(AURAS[0], 'No hay aura');
+  assert.equal(AURAS[13], 'Manipulador clásico');
+  assert.equal(AURAS[21], 'Tripas de dragón');
+  assert.equal(ETAPAS_DRAGON.length, 28);
+  assert.equal(ETAPA_AURA_SECUNDARIA, 27);
+  assert.equal(ETAPAS_DRAGON[0].accion, 'Picar');
+  assert.equal(ETAPAS_DRAGON[4].nombre, 'Krumblor, cría de galleta');
+  assert.equal(ETAPAS_DRAGON[4].accion, 'Adiestrar Aliento lechoso');
+  assert.equal(ETAPAS_DRAGON[8].nombre, 'Krumblor, dragón de galleta');
+  assert.equal(ETAPAS_DRAGON[8].accion, 'Adiestrar Tiembla tierras');
+  assert.equal(ETAPAS_DRAGON[26].accion, 'Adiestrar aura secundaria');
+  assert.equal(ETAPAS_DRAGON[27].accion, 'Tu dragón está adiestrado del todo.');
+});
+
+test('una partida nombra la promesa, la bóveda y la etapa, y una vieja corre el dragón', () => {
+  const misc = Array.from({ length: 55 }, () => '0');
+  misc[7] = '31';
+  misc[10] = '2';
+  misc[11] = '900';
+  misc[18] = '10';
+  misc[19] = '3';
+  misc[23] = '40';
+  misc[24] = '2';
+  misc[35] = '8';
+  misc[36] = '15';
+  misc[37] = '0';
+  misc[39] = '75';
+  misc[40] = '1';
+  misc[41] = '12';
+  misc[22] = '';
+  misc[47] = '0,874,876';
+  misc[52] = '50';
+  const plano = [
+    '2.053',
+    '',
+    '111;222;333;Horno;abc;0,1,0,0,0,0,0',
+    '1',
+    misc.join(';'),
+    '4,5,6,1;',
+    '11',
+    '1',
+    '',
+    '',
+  ].join('|');
+  const resultado = lector.decodificar(envolver(plano));
+  assert.equal(resultado.ok, true, resultado.error);
+  assert.equal(resultado.advertencias.length, 0);
+  const datos = resultado.datos;
+  assert.equal(datos.leche.nombre, 'Melon milk');
+  assert.equal(datos.santa.nombre, 'Nick');
+  assert.equal(datos.promesas, 2);
+  assert.equal(datos.renos, 3);
+  assert.equal(datos.devoradores.cantidad, 2);
+  assert.equal(datos.devoradores.galletas, 40);
+  assert.equal(datos.devoradores.brillantes, 1);
+  assert.equal(datos.devoradores.galletasBrillantes, 12);
+  assert.equal(datos.nivelDragon.nombre, 'Krumblor, dragón de galleta');
+  assert.equal(datos.nivelDragon.accion, 'Adiestrar Tiembla tierras');
+  assert.equal(datos.auraDragon.nombre, 'Apetito radiante');
+  assert.equal(datos.auraDragon2.nombre, 'No hay aura');
+  assert.equal(datos.volumen, 75);
+  assert.equal(datos.volumenMusica, 50);
+  assert.deepEqual(datos.boveda.entradas.map((entrada) => entrada.nombre), [
+    mejoras[0],
+    mejoras[874],
+    'Mejora desconocida #876',
+  ]);
+  const html = renderizarPaneles(resultado.paneles, (valor) => String(valor));
+  assert.ok(html.includes('Apetito radiante'));
+  assert.ok(html.includes('Ratón omnipresente'));
+  assert.ok(html.includes('#876'));
+  assert.equal(html.includes('<script'), false);
+
+  const vieja = misc.slice();
+  vieja[35] = '26';
+  const planoViejo = plano.replace(misc.join(';'), vieja.join(';')).replace('2.053', '2.004');
+  const migrada = lector.decodificar(envolver(planoViejo));
+  assert.equal(migrada.ok, true, migrada.error);
+  assert.equal(migrada.datos.nivelDragon.id, 27);
+  assert.equal(migrada.datos.nivelDragon.accion, 'Tu dragón está adiestrado del todo.');
+  assert.ok(migrada.advertencias.some((aviso) => aviso.includes('2.0041')));
+
+  const moderna = misc.slice();
+  moderna[35] = '26';
+  const planoModerno = plano.replace(misc.join(';'), moderna.join(';'));
+  const sinCorrer = lector.decodificar(envolver(planoModerno));
+  assert.equal(sinCorrer.datos.nivelDragon.id, 26);
+  assert.equal(sinCorrer.datos.nivelDragon.accion, 'Adiestrar aura secundaria');
+  assert.equal(sinCorrer.advertencias.some((aviso) => aviso.includes('2.0041')), false);
 });

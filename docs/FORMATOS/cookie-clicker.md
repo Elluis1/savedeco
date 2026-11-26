@@ -63,54 +63,58 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 4 | `Game.handmadeCookies` | Hechas a mano |
 | 5 | `Game.missedGoldenClicks` | Doradas perdidas. Queda en los datos, no en el panel |
 | 6 | `Game.bgType` | Id de fondo. El dibujo de cada id no está mapeado |
-| 7 | `Game.milkType` | Id de leche. Igual que el fondo |
+| 7 | `Game.milkType` | Índice de `Game.AllMilks`. El nombre sale de la loc. Ver abajo |
 | 8 | `Game.cookiesReset` | Entregadas al ascender |
 | 9 | `Game.elderWrath` | Ira de las ancianas, 0 a 3. En los datos |
-| 10 | `Game.pledges` | Veces que se compró el pacto. Esta versión no lo extrae |
-| 11 | `Game.pledgeT` | Tiempo de pacto restante, en fotogramas. Esta versión no lo extrae |
+| 10 | `Game.pledges` | Veces que se compró Promesa a las ancianas. En la loc, Elder Pledge es «Promesa a las ancianas», no el Pacto de anciana |
+| 11 | `Game.pledgeT` | Tiempo de promesa restante, en fotogramas. `getPledgeDuration` usa `Game.fps` (30) |
 | 12 | `Game.nextResearch` | Id de la investigación en curso |
 | 13 | `Game.researchT` | Fotogramas de investigación. `-1` es “ya terminó” |
 | 14 | `Game.resets` | Cantidad de ascensiones |
 | 15 | `Game.goldenClicksLocal` | Doradas esta ascensión |
 | 16 | `Game.cookiesSucked` | Absorbidas por devoradores esta ascensión |
 | 17 | `Game.wrinklersPopped` | Devoradores explotados |
-| 18 | `Game.santaLevel` | Nivel de Papá Noel |
-| 19 | `Game.reindeerClicked` | Renos esta ascensión |
+| 18 | `Game.santaLevel` | Índice de `Game.santaLevels`, de 0 a 14. El nombre sale de la loc |
+| 19 | `Game.reindeerClicked` | Renos clickeados esta ascensión. El save no guarda el nombre de cada uno |
 | 20 | `Game.seasonT` | Tiempo de temporada, en fotogramas. Ver abajo |
 | 21 | `Game.seasonUses` | Veces que se usó el cambiador de temporada |
 | 22 | `Game.season` | Id de temporada, o vacío |
-| 23 | galletas en devoradores | `SaveWrinklers().amount` |
-| 24 | devoradores normales | `SaveWrinklers().number` |
+| 23 | galletas en devoradores | `SaveWrinklers().amount`. Solo los que no son brillantes |
+| 24 | devoradores con galletas | `SaveWrinklers().number`. Cuenta también a los brillantes |
 | 25 | `Game.prestige` | Prestigio guardado |
 | 26 | `Game.heavenlyChips` | Pepitas sin gastar. En inglés, heavenly chips |
 | 27 | `Game.heavenlyChipsSpent` | Pepitas gastadas |
 | 28 | `Game.heavenlyCookies` | Campo viejo. Queda en los datos y en la descarga. El panel no lo muestra |
 | 29 | `Game.ascensionMode` | `0` ninguno, `1` Renacido |
 | 30–34 | `Game.permanentUpgrades` | Cinco ids de mejora. `-1` o vacío es ranura libre |
-| 35 | `Game.dragonLevel` | Índice de etapa. El título de cada etapa no lo mostramos |
-| 36 | `Game.dragonAura` | Id de aura. El nombre no está mapeado |
-| 37 | `Game.dragonAura2` | Segunda aura, igual |
+| 35 | `Game.dragonLevel` | Índice de `Game.dragonLevels`. El título es el `name`, que varias etapas comparten |
+| 36 | `Game.dragonAura` | Clave de `Game.dragonAuras`. El 0 es «No hay aura» |
+| 37 | `Game.dragonAura2` | Segunda aura. El fuente la dibuja si `dragonLevel >= 27` |
 | 38 | `Game.chimeType` | Sonido de galleta dorada |
-| 39 | `Game.volume` | Volumen |
-| 40 | devoradores brillantes | cantidad |
-| 41 | galletas en los brillantes | cantidad |
+| 39 | `Game.volume` | Volumen del deslizador, de 0 a 100. Si el campo viene vacío, al cargar el juego pone 75. Un 0 guardado se queda en 0 |
+| 40 | devoradores brillantes | `SaveWrinklers().shinies` |
+| 41 | galletas en los brillantes | `SaveWrinklers().amountShinies` |
 | 42 | `Game.lumps` | Terrones en el banco. `-1` si todavía no se desbloquean |
 | 43 | `Game.lumpsTotal` | Terrones cosechados |
 | 44 | `Game.lumpT` | Cuándo empezó a formarse el terrón actual, en ms |
 | 45 | `Game.lumpRefill` | Última vez que un terrón rellenó un minijuego, en ms |
 | 46 | `Game.lumpCurrentType` | Ver tipos más abajo |
-| 47 | `Game.vault` | Ids de mejoras en la bóveda, separados por coma. `WriteSave` hace `Game.vault.join(',')`. Las 876 mejoras de la loc, si estuvieran todas, arman unos 3.400 caracteres. |
+| 47 | `Game.vault` | Ids de mejoras en la bóveda, separados por coma. `WriteSave` hace `Game.vault.join(',')`. El nombre sale del catálogo de mejoras. Las 876, si estuvieran todas, arman unos 3.400 caracteres. |
 | 48 | `Game.heralds` | Heraldos al momento de guardar. Al cargar, el juego pone los de ahora |
 | 49 | `Game.fortuneGC` | Si se clickeó la fortuna de galleta dorada esta ascensión |
 | 50 | `Game.fortuneCPS` | Si se clickeó la fortuna de g/s |
 | 51 | `Game.cookiesPsRawHighest` | Mayor g/s crudo de esta ascensión |
-| 52 | `Game.volumeMusic` | Volumen de la música |
+| 52 | `Game.volumeMusic` | Volumen de la música, de 0 a 100. El deslizador está en la versión de escritorio. Si el campo viene vacío, al cargar el juego pone 50. Un 0 guardado se queda en 0 |
 | 53 | `Game.cookiesSent` | Galletas regaladas |
 | 54 | `Game.cookiesReceived` | Galletas recibidas |
 
 Lo que venga después del 54, en una versión más nueva, queda como desconocido y se avisa. El número que muestra la descarga es el índice del campo, aunque haya huecos vacíos en el medio.
 
-Los paneles de esta versión muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, terrones, edificios, los minijuegos, logros, mejoras, prestigio, pepitas, ascensiones, modo, nivel del dragón, heraldos, el efecto activo y los mods. La descarga agrega, con el mismo número del save, las doradas perdidas, el fondo, la leche, las auras, la ira de las ancianas, las galletas celestiales y el pico de g/s. El resto de esta tabla sigue sin extraerse.
+Los paneles muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, leche, terrones, edificios, los minijuegos, logros, mejoras, prestigio, pepitas, ascensiones, modo, la etapa del dragón y las dos auras, heraldos, la promesa, Papá Noel, los renos, los devoradores, los dos volúmenes, la bóveda, el efecto activo y los mods. La descarga agrega, con el mismo número del save, las doradas perdidas, el fondo, la ira de las ancianas, las galletas celestiales y el pico de g/s. Siguen sin extraerse la investigación (12 y 13), el sonido de la galleta dorada (38), las dos fechas del terrón (44 y 45), las fortunas (49 y 50) y las galletas regaladas y recibidas (53 y 54).
+
+La promesa, Papá Noel, los renos, los devoradores y la etapa del dragón se ponen en cero en `Game.Reset`. `Game.Reincarnate` llama a `Reset`. `Game.Ascend` solo abre la pantalla de prestigio y no los toca. La leche y la bóveda no: solo el `hard` de `Reset` las reinicia. Los volúmenes no los toca ni ese hard.
+
+`SaveWrinklers` recorre `Game.wrinklers`. Si `sucked` pasa de 0,5, suma uno a `number`. Si `type` es 1, además suma a `shinies` y a `amountShinies`. Si no, suma a `amount`. Por eso las galletas del campo 23 no incluyen a los brillantes, y el campo 24 no es «solo los normales».
 
 Las horneadas en total no son un campo. El juego las muestra como `cookiesEarned + cookiesReset` (está así en el armado de las estadísticas, alrededor de la línea del texto “Cookies baked (all time)”). Hacemos la misma suma.
 
@@ -142,6 +146,22 @@ Sale de las ramas de `lumpCurrentType` en el fuente, con el adjetivo de la loc:
 | 2 | dorado |
 | 3 | carnoso |
 | 4 | caramelizado |
+
+## Leche, Papá Noel y dragón
+
+Los nombres salen de `loc/ES.js`, bajada el 2026-11-26 del mismo host que el `main.js`. El espejo [ozh/cookieclicker](https://github.com/ozh/cookieclicker) declara `VERSION=2.058` en `index.html`. Si la loc trae `/` o no tiene la clave, queda el inglés, que es lo que devuelve `loc()`.
+
+La leche es el índice de `Game.AllMilks` (35 entradas, de Automático a Leche de avellana). `LoadSave` hace `if (Game.milkType==-1 || !Game.AllMilks[Game.milkType]) Game.milkType=0`. Acá un id fuera de la lista se muestra como desconocido y se avisa: no lo reescribimos a 0. «Melon milk» y «Blackcurrant milk» no están en esa loc, así que quedan en inglés.
+
+Papá Noel es el índice de `Game.santaLevels` (15 etapas, de Tubo de ensayo navideño a Papá Noel final). «Nick» está como `/` en la loc y se muestra en inglés. El 0 es una etapa de verdad, no un «todavía no».
+
+El dragón es el índice de `Game.dragonLevels` (28 etapas). El `name` se repite: las tres primeras son Huevo de dragón, las cuatro siguientes son Krumblor, cría de galleta, y el resto es Krumblor, dragón de galleta. La acción las distingue. De la 4 a la 24 el fuente arma `loc("Train %1", aura)`, o sea «Adiestrar» más el nombre del aura `i - 3`. La 25 es Hornear galleta de dragón, la 26 es Adiestrar aura secundaria y la 27 es «Tu dragón está adiestrado del todo.» Las auras son las claves de `Game.dragonAuras`, de 0 («No hay aura») a 21 (Tripas de dragón). «Epoch Manipulator» está en la loc como «Manipulador clásico». La segunda ranura se dibuja si `dragonLevel >= 27`. El save igual guarda el id antes de eso.
+
+En una versión anterior a la 2.0041, si el índice guardado es la penúltima etapa de la lista actual, `LoadSave` lo pasa a la última. Hacemos lo mismo y lo avisamos.
+
+El volumen y el de la música son el `value` de un `<input type="range" min="0" max="100">`. `LoadSave` hace `spl[39] ? parseInt(spl[39]) : 75` y lo mismo con 50 para la música. El string `"0"` es truthy, así que un cero guardado se queda. Solo el campo vacío cae en el defecto. Un número fuera de 0 a 100 se muestra y se avisa. El de la música solo arma el deslizador si existe `App` (la versión de escritorio). El campo igual está en el `WriteSave` de la web. `Game.Reset` no los reinicia, ni en hard.
+
+La bóveda parte por coma. Un id numérico de hasta 6 dígitos se nombra con el catálogo de mejoras. Otro texto no se muestra. Más de 2.000 entradas, o un campo de más de 40.000 caracteres, no se despliega.
 
 ## Edificios (sección 5)
 

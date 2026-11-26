@@ -69,9 +69,8 @@ Universal Paperclips y A Dark Room guardan en `localStorage` y no tienen un cód
 ## Mejoras del lector de Cookie Clicker
 
 - Los minijuegos (jardín, bolsa, panteón, grimorio) ya se leen, con el formato del fuente. El jardín se muestra como parcela de 6 por 6.
-- Sigue sin extraerse el resto de la tabla de estadísticas: pactos, devoradores, Papá Noel, renos, bóveda, volúmenes y lo demás que el formato ya nombra.
-- El fondo, el tipo de leche y las auras del dragón quedan como id numérico. No mapeamos el nombre de cada sprite.
-- El nivel del dragón es el índice de etapa, sin el título.
+- La promesa a las ancianas, los devoradores, Papá Noel, los renos, la bóveda y los dos volúmenes ya se leen. La leche, las auras y la etapa del dragón tienen el nombre de la loc. El fondo sigue como id.
+- Sigue sin extraerse lo que el formato nombra y esta pasada no tocó: la investigación, el sonido de la galleta dorada, las fechas del terrón, las fortunas y las galletas regaladas.
 - La apariencia de Tú son siete índices de genes. No tenemos el nombre visual de cada opción.
 - Hay un test sintético del bitfield empaquetado (versión 2.000) y de la lista con huecos (1.030). Sigue faltando un fixture real de una partida vieja.
 - Una notación en escala larga (billón = 10^12) para quien lea los nombres en español de toda la vida. Hoy la corta sigue al juego a propósito.

@@ -105,3 +105,19 @@ Una llamada suelta a `decodificar` (los tests, o cambiar la notación, que no vu
 - Cargar el lector recién al decodificar. El primer pintado no espera a los módulos, y hace falta el catálogo para los nombres.
 - Una cache larga en `netlify.toml`. Sin nombres con hash, un `max-age` largo serviría JS viejo después de un deploy. La página son 58 KB gzip.
 - Reescribir la exportación. Los tres archivos salen en unos 30 ms en el navegador. El JSON es grande para leerlo, no para armarlo.
+
+## 2026-11-26 — promesa, devoradores, dragón y bóveda
+
+Misma máquina virtual, otro arranque (Linux 6.12.113+, Node v22.23.4, Chrome headless). No toqué el reuso del base64. Lo que se sumó es nombrar la leche, las auras y la etapa del dragón, y leer la promesa, Papá Noel, los renos, los devoradores, los volúmenes y la bóveda.
+
+| | 20 oct | 26 nov |
+| --- | ---: | ---: |
+| Total | 183 288 B | 207 429 B |
+| Gzip | 57 779 B | 64 139 B |
+| JS | 172 053 B | 196 194 B |
+
+`especiales.js` pesa 3 806 B (1 516 B gzip). `formato.js` pasó de 51 654 B a 66 347 B. El resto no se movió.
+
+El fixture de Elluis se decodifica en 0,88 ms (el 20 oct, 0,65 ms). El HTML de los diez paneles pesa 75 557 B y se arma en 1,2 ms. La promesa son 2,7 KB y 0,02 ms. La bóveda vacía de Elluis son 335 B y 0,002 ms. El primer pintado dio 52 ms de mediana (100, 64, 44, 52 y 48). Con el CPU a 4×, el frame quedó en 168 ms y 2 137 nodos.
+
+En el botón, el de 400 KB escapado salió en 7,5 ms y una basura de 2 MB en 27 ms en el desglose (la mediana de la tanda, con más ruido, dio 40 ms: el rango fue 26 a 45). Sigue siendo el costo de abrir el código. Una bóveda de 2.001 ids se rechaza antes de armar la lista.

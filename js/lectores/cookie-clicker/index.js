@@ -11,6 +11,8 @@ export const lector = {
     { id: 'bolsa', titulo: 'Bolsa', tipo: 'tabla' },
     { id: 'progreso', titulo: 'Logros y mejoras', tipo: 'progreso' },
     { id: 'prestigio', titulo: 'Prestigio y ascensión', tipo: 'tarjetas' },
+    { id: 'promesa', titulo: 'Promesa, Papá Noel y devoradores', tipo: 'tarjetas' },
+    { id: 'boveda', titulo: 'Bóveda', tipo: 'lista' },
     { id: 'mods', titulo: 'Mods detectados', tipo: 'lista' },
   ],
   detectar,

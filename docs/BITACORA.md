@@ -2,6 +2,36 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-11-26 — Revisión del PR 11
+
+Revisión independiente de la promesa, los devoradores y el dragón. `node --test` sigue en verde y la rama no tenía conflictos con main. Los nombres salen de `loc/ES.js`, el orden es el de `WriteSave`, `SaveWrinklers` separa brillantes y normales, y la migración del dragón anterior a la 2.0041 coincide con `LoadSave`. La segunda aura se dibuja desde la etapa 27.
+
+En la misma rama corregí dos citas que no coincidían con el fuente del 2026-11-26:
+
+- `Game.volume = spl[39] ? parseInt(spl[39]) : 75`, y lo mismo con 50 para la música. El string `"0"` es truthy, así que un cero guardado se queda. Solo el campo vacío cae en 75 o 50. La partida de Elluis trae la música en `"0"`: el juego no la pasa a 50.
+- La leche y la bóveda se reinician solo en el hard de `Reset`. Los volúmenes no los toca ni ese hard. `Reincarnate` llama a `Reset`, no al revés.
+
+PR: https://github.com/Elluis1/savedeco/pull/11
+
+Próximos pasos: los mismos de la entrada de abajo.
+
+## 2026-11-26 — Savedeco
+
+Completé la parte de Cookie Clicker que el formato ya nombraba y el lector no mostraba: la promesa a las ancianas, los devoradores, Papá Noel, los renos, la bóveda, los dos volúmenes, la leche, las auras y la etapa del dragón. El roadmap hablaba de «pactos». En la loc, Elder Pledge es «Promesa a las ancianas». El Pacto de anciana es otra mejora (Elder Covenant) y no es este campo.
+
+Qué quedó:
+
+- La promesa (veces y fotogramas que quedan), Papá Noel con el nombre de la etapa, los renos clickeados, los devoradores (explotados, con galletas, brillantes y lo que tienen adentro) y los dos volúmenes, de 0 a 100.
+- La leche, las auras y la etapa del dragón con el nombre de `loc/ES.js`, en el orden de `main.js`, bajados el 2026-11-26. El espejo declara la versión 2.058. «Nick», «Melon milk» y «Blackcurrant milk» quedan en inglés: la loc no los traduce. Varias etapas del dragón comparten título. Las separa el índice y la acción. El fondo sigue como id.
+- La bóveda se despliega con el nombre de cada mejora. Más de 2.000 entradas, o un texto que no es un id, no se arma y se avisa.
+- La partida de Elluis no gana avisos: leche de Midas, dragón en la etapa 27 (adiestrado del todo), las dos auras vacías, 15 promesas, 25 min 17 s de promesa, Papá Noel en la etapa 0, 94 renos, volumen 5 % y la bóveda vacía. Lo comprobé en el navegador, subiendo el fixture.
+
+`node --test` sigue en verde. La página pasó de 183 KB a 207 KB (64 KB gzip). El fixture se decodifica en 0,88 ms. Los paneles nuevos no mueven el frame.
+
+PR: https://github.com/Elluis1/savedeco/pull/11
+
+Próximos pasos: lo que el formato nombra y esta pasada no tocó (investigación, sonido de la galleta dorada, fechas del terrón, fortunas, galletas regaladas). Después, el lector de Kittens Game. El de Terraria sigue esperando el camino de bytes.
+
 ## 2026-10-21 — Revisión del PR 10
 
 Revisión independiente del formato de Kittens Game. El test sintético sigue verde y la rama no tiene conflictos con main. En la misma rama corregí citas que no coincidían con el commit `781e379`:

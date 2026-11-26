@@ -250,8 +250,21 @@ test('la partida de Elluis arma texto, CSV y JSON', () => {
 
   const sinNombre = seccion(datos, 'sin-nombre');
   assert.equal(sinNombre.campos.find((campo) => campo.etiqueta === 'Fondo').valor, 14);
-  assert.equal(sinNombre.campos.find((campo) => campo.etiqueta === 'Leche').valor, 15);
+  assert.equal(sinNombre.campos.find((campo) => campo.etiqueta === 'Leche'), undefined);
   assert.ok(sinNombre.nota.includes('id'));
+  const leche = seccion(datos, 'resumen').campos.find((campo) => campo.etiqueta === 'Leche');
+  assert.equal(leche.valor, 'Leche de Midas');
+  const dragon = seccion(datos, 'prestigio').campos.find((campo) => campo.etiqueta === 'Dragón');
+  assert.equal(dragon.valor, 'Krumblor, dragón de galleta');
+  const seccionPromesa = seccion(datos, 'promesa');
+  const promesa = seccionPromesa.campos.find((campo) => campo.etiqueta === 'Promesas a las ancianas');
+  assert.equal(promesa.valor, 15);
+  assert.equal(seccionPromesa.nota.includes('como ausente'), false);
+  assert.ok(seccionPromesa.nota.includes('Un 0 guardado se queda en 0'));
+  const musica = seccionPromesa.campos.find((campo) => campo.etiqueta === 'Volumen de la música');
+  assert.equal(musica.valor, 0);
+  assert.ok(musica.nota.includes('se queda en 0'));
+  assert.equal(seccion(datos, 'boveda').tabla.filas.length, 0);
   assert.equal(sinNombre.tabla.filas.find((fila) => fila.gen === 'color de pelo').indice.valor, 1);
 
   assert.equal(seccion(datos, 'efectos').tabla.filas[0].nombre, 'Frenesí');
