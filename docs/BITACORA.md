@@ -2,6 +2,19 @@
 
 Entradas nuevas arriba. Cada una dice la fecha, quién la hizo, qué cambió, el PR y qué sigue.
 
+## 2026-11-26 — Revisión del PR 11
+
+Revisión independiente de la promesa, los devoradores y el dragón. `node --test` sigue en verde y la rama no tenía conflictos con main. Los nombres salen de `loc/ES.js`, el orden es el de `WriteSave`, `SaveWrinklers` separa brillantes y normales, y la migración del dragón anterior a la 2.0041 coincide con `LoadSave`. La segunda aura se dibuja desde la etapa 27.
+
+En la misma rama corregí dos citas que no coincidían con el fuente del 2026-11-26:
+
+- `Game.volume = spl[39] ? parseInt(spl[39]) : 75`, y lo mismo con 50 para la música. El string `"0"` es truthy, así que un cero guardado se queda. Solo el campo vacío cae en 75 o 50. La partida de Elluis trae la música en `"0"`: el juego no la pasa a 50.
+- La leche y la bóveda se reinician solo en el hard de `Reset`. Los volúmenes no los toca ni ese hard. `Reincarnate` llama a `Reset`, no al revés.
+
+PR: https://github.com/Elluis1/savedeco/pull/11
+
+Próximos pasos: los mismos de la entrada de abajo.
+
 ## 2026-11-26 — Savedeco
 
 Completé la parte de Cookie Clicker que el formato ya nombraba y el lector no mostraba: la promesa a las ancianas, los devoradores, Papá Noel, los renos, la bóveda, los dos volúmenes, la leche, las auras y la etapa del dragón. El roadmap hablaba de «pactos». En la loc, Elder Pledge es «Promesa a las ancianas». El Pacto de anciana es otra mejora (Elder Covenant) y no es este campo.

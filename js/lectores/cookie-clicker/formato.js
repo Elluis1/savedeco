@@ -1058,8 +1058,8 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
       { etiqueta: 'Galletas en devoradores', numero: datos.devoradores.galletas, detalle: 'Las de los que no son brillantes.' },
       { etiqueta: 'Devoradores brillantes', numero: datos.devoradores.brillantes, detalle: 'Cuántos de los que tenían galletas son brillantes.' },
       { etiqueta: 'Galletas en brillantes', numero: datos.devoradores.galletasBrillantes },
-      { etiqueta: 'Volumen', texto: `${formatear(datos.volumen)} %`, detalle: 'El deslizador va de 0 a 100.' },
-      { etiqueta: 'Volumen de la música', texto: `${formatear(datos.volumenMusica)} %`, detalle: 'En la loc, Volumen (música). El deslizador está en la versión de escritorio.' },
+      { etiqueta: 'Volumen', texto: `${formatear(datos.volumen)} %`, detalle: detalleVolumen(datos.volumen, 75, false) },
+      { etiqueta: 'Volumen de la música', texto: `${formatear(datos.volumenMusica)} %`, detalle: detalleVolumen(datos.volumenMusica, 50, true) },
     ],
   };
 
@@ -1098,6 +1098,17 @@ function detalleAura(aura, nivelDragon) {
   if (nivelDragon == null) return id;
   if (nivelDragon >= ETAPA_AURA_SECUNDARIA) return `${id} La segunda ranura se abre en la etapa ${ETAPA_AURA_SECUNDARIA}.`;
   return `${id} El fuente muestra la segunda ranura desde la etapa ${ETAPA_AURA_SECUNDARIA}. El save igual guarda el número.`;
+}
+
+// LoadSave hace `spl[39] ? parseInt(spl[39]) : 75`. El string "0" es truthy,
+// así que un cero guardado se queda. Solo el campo vacío cae en el defecto.
+// Acá los dos se ven como 0, y el detalle lo dice cuando el número es ese.
+function detalleVolumen(valor, defecto, musica) {
+  const base = musica
+    ? 'En la loc, Volumen (música). El deslizador está en la versión de escritorio.'
+    : 'El deslizador va de 0 a 100.';
+  if (valor !== 0) return base;
+  return `${base} Si el campo venía vacío, el juego pone ${defecto} al cargar. Un 0 guardado se queda en 0.`;
 }
 
 function minijuegoDe(datos, indice) {
@@ -1352,7 +1363,7 @@ export function armarExportacion(datos) {
       {
         id: 'promesa',
         titulo: 'Promesa, Papá Noel y devoradores',
-        nota: 'La promesa, Papá Noel, los renos y los devoradores se ponen en cero al reencarnar. Los volúmenes son los deslizadores, de 0 a 100. Si el campo viene vacío, acá figura 0: al cargar, el juego trata el 0 del volumen como ausente y pone 75, y el de la música en 50.',
+        nota: 'La promesa, Papá Noel, los renos y los devoradores se ponen en cero al reencarnar. Los volúmenes son los deslizadores, de 0 a 100, y ni reencarnar ni el hard reset los tocan. Si el campo viene vacío, acá figura 0: al cargar, el juego pone 75 en el volumen y 50 en la música. Un 0 guardado se queda en 0.',
         campos: [
           campo('Promesas a las ancianas', datos.promesas, 'entero', 'Game.pledges. Veces que se compró Promesa a las ancianas en esta ascensión.'),
           campo('Tiempo de promesa', datos.promesaFotogramas, 'entero', 'Fotogramas que quedaban, a 30 por segundo.'),
@@ -1365,8 +1376,8 @@ export function armarExportacion(datos) {
           campo('Galletas en devoradores', datos.devoradores?.galletas, 'numero', 'SaveWrinklers().amount. Solo los que no son brillantes.'),
           campo('Devoradores brillantes', datos.devoradores?.brillantes, 'entero', 'SaveWrinklers().shinies.'),
           campo('Galletas en brillantes', datos.devoradores?.galletasBrillantes, 'numero', 'SaveWrinklers().amountShinies.'),
-          campo('Volumen', datos.volumen, 'entero', 'Porcentaje del deslizador, de 0 a 100.'),
-          campo('Volumen de la música', datos.volumenMusica, 'entero', 'Porcentaje. El deslizador está en la versión de escritorio.'),
+          campo('Volumen', datos.volumen, 'entero', 'Porcentaje del deslizador, de 0 a 100. Vacío se muestra como 0 y el juego pone 75 al cargar. Un 0 guardado se queda en 0.'),
+          campo('Volumen de la música', datos.volumenMusica, 'entero', 'Porcentaje. El deslizador está en la versión de escritorio. Vacío se muestra como 0 y el juego pone 50 al cargar. Un 0 guardado se queda en 0.'),
         ],
       },
       {

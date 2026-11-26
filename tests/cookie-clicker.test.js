@@ -195,6 +195,8 @@ test('la partida de Elluis se lee con los valores confirmados', () => {
   assert.ok(html.includes('Tubo de ensayo navideño'));
   assert.ok(html.includes('25 min 17 s'));
   assert.ok(html.includes('La bóveda no esconde mejoras.'));
+  assert.ok(html.includes('Un 0 guardado se queda en 0.'));
+  assert.equal(html.includes('como ausente'), false);
   assert.equal(html.includes('<script'), false);
 
   const documento = armarExportacion(datos);

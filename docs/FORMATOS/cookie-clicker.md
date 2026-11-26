@@ -91,7 +91,7 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 36 | `Game.dragonAura` | Clave de `Game.dragonAuras`. El 0 es «No hay aura» |
 | 37 | `Game.dragonAura2` | Segunda aura. El fuente la dibuja si `dragonLevel >= 27` |
 | 38 | `Game.chimeType` | Sonido de galleta dorada |
-| 39 | `Game.volume` | Volumen del deslizador, de 0 a 100. Si el campo viene vacío o en 0, al cargar el juego pone 75 |
+| 39 | `Game.volume` | Volumen del deslizador, de 0 a 100. Si el campo viene vacío, al cargar el juego pone 75. Un 0 guardado se queda en 0 |
 | 40 | devoradores brillantes | `SaveWrinklers().shinies` |
 | 41 | galletas en los brillantes | `SaveWrinklers().amountShinies` |
 | 42 | `Game.lumps` | Terrones en el banco. `-1` si todavía no se desbloquean |
@@ -104,7 +104,7 @@ El orden es el de `WriteSave`, que coincide con la tabla de la wiki. Los número
 | 49 | `Game.fortuneGC` | Si se clickeó la fortuna de galleta dorada esta ascensión |
 | 50 | `Game.fortuneCPS` | Si se clickeó la fortuna de g/s |
 | 51 | `Game.cookiesPsRawHighest` | Mayor g/s crudo de esta ascensión |
-| 52 | `Game.volumeMusic` | Volumen de la música, de 0 a 100. El deslizador está en la versión de escritorio. Si el campo viene vacío o en 0, al cargar el juego pone 50 |
+| 52 | `Game.volumeMusic` | Volumen de la música, de 0 a 100. El deslizador está en la versión de escritorio. Si el campo viene vacío, al cargar el juego pone 50. Un 0 guardado se queda en 0 |
 | 53 | `Game.cookiesSent` | Galletas regaladas |
 | 54 | `Game.cookiesReceived` | Galletas recibidas |
 
@@ -112,7 +112,7 @@ Lo que venga después del 54, en una versión más nueva, queda como desconocido
 
 Los paneles muestran panadería, fechas, galletas (banco, ascensión y total), clics, hechas a mano, doradas, temporada, leche, terrones, edificios, los minijuegos, logros, mejoras, prestigio, pepitas, ascensiones, modo, la etapa del dragón y las dos auras, heraldos, la promesa, Papá Noel, los renos, los devoradores, los dos volúmenes, la bóveda, el efecto activo y los mods. La descarga agrega, con el mismo número del save, las doradas perdidas, el fondo, la ira de las ancianas, las galletas celestiales y el pico de g/s. Siguen sin extraerse la investigación (12 y 13), el sonido de la galleta dorada (38), las dos fechas del terrón (44 y 45), las fortunas (49 y 50) y las galletas regaladas y recibidas (53 y 54).
 
-La promesa, Papá Noel, los renos, los devoradores y la etapa del dragón se ponen en cero en `Game.Reset`, que llama `Game.Reincarnate`. `Game.Ascend` solo abre la pantalla de prestigio y no los toca. Los volúmenes, la leche y la bóveda no: solo el `hard` de `Reset` los reinicia.
+La promesa, Papá Noel, los renos, los devoradores y la etapa del dragón se ponen en cero en `Game.Reset`. `Game.Reincarnate` llama a `Reset`. `Game.Ascend` solo abre la pantalla de prestigio y no los toca. La leche y la bóveda no: solo el `hard` de `Reset` las reinicia. Los volúmenes no los toca ni ese hard.
 
 `SaveWrinklers` recorre `Game.wrinklers`. Si `sucked` pasa de 0,5, suma uno a `number`. Si `type` es 1, además suma a `shinies` y a `amountShinies`. Si no, suma a `amount`. Por eso las galletas del campo 23 no incluyen a los brillantes, y el campo 24 no es «solo los normales».
 
@@ -159,7 +159,7 @@ El dragón es el índice de `Game.dragonLevels` (28 etapas). El `name` se repite
 
 En una versión anterior a la 2.0041, si el índice guardado es la penúltima etapa de la lista actual, `LoadSave` lo pasa a la última. Hacemos lo mismo y lo avisamos.
 
-El volumen y el de la música son el `value` de un `<input type="range" min="0" max="100">`. Un número fuera de ese rango se muestra y se avisa. El de la música solo arma el deslizador si existe `App` (la versión de escritorio). El campo igual está en el `WriteSave` de la web.
+El volumen y el de la música son el `value` de un `<input type="range" min="0" max="100">`. `LoadSave` hace `spl[39] ? parseInt(spl[39]) : 75` y lo mismo con 50 para la música. El string `"0"` es truthy, así que un cero guardado se queda. Solo el campo vacío cae en el defecto. Un número fuera de 0 a 100 se muestra y se avisa. El de la música solo arma el deslizador si existe `App` (la versión de escritorio). El campo igual está en el `WriteSave` de la web. `Game.Reset` no los reinicia, ni en hard.
 
 La bóveda parte por coma. Un id numérico de hasta 6 dígitos se nombra con el catálogo de mejoras. Otro texto no se muestra. Más de 2.000 entradas, o un campo de más de 40.000 caracteres, no se despliega.
 
