@@ -4,6 +4,7 @@
 // pack3() hoy devuelve el bitfield tal cual; las versiones viejas usan unpack2 o unpack.
 
 import { edificios, logros, mejoras } from './catalogo.js';
+import { AURAS, ETAPA_AURA_SECUNDARIA, ETAPAS_DRAGON, LECHES, NIVELES_SANTA } from './especiales.js';
 import { detalleMinijuego, leerMinijuegos, panelesMinijuegos, seccionesMinijuegos } from './minijuegos.js';
 import { LIMITE_CODIGO, MENSAJE_LARGO } from '../../nucleo/decodificar.js';
 import { formatearFotogramas } from '../../nucleo/numeros.js';
@@ -39,9 +40,16 @@ const FECHA_MAXIMA = 8.64e15;
 // sin que haya ningún número roto. Si se suma otro misc[n] numérico, hay que
 // agregarlo acá para que el aviso coincida con lo que de verdad se pone en cero.
 const INDICES_NUMERICOS_STATS = [
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 20, 21, 25, 26, 27, 28, 29,
-  30, 31, 32, 33, 34, 35, 36, 37, 42, 43, 46, 48, 51,
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 20, 21,
+  23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 39, 40, 41,
+  42, 43, 46, 48, 51, 52,
 ];
+
+// Un conteo de promesas, renos o devoradores por encima de esto no es una partida.
+const TOPE_CONTEO = 1e12;
+// 876 mejoras juntas ocupan unos 3.400 caracteres. Por encima no armamos la lista.
+const MAX_LARGO_BOVEDA = 40_000;
+const MAX_ENTRADAS_BOVEDA = 2_000;
 
 // Copiar desde la web a veces mete espacios de ancho cero que no son \s.
 const INVISIBLES = /[\s\u200B\u200C\u200D\u2060]+/g;
@@ -465,6 +473,148 @@ function leerApariencia(texto) {
   return salida;
 }
 
+function enteroLimpio(texto) {
+  if (texto == null || texto === '') return { presente: false, valor: 0 };
+  if (texto.length > MAX_DIGITOS || !/^-?\d+$/.test(texto)) return { presente: true, valor: null };
+  return { presente: true, valor: Number.parseInt(texto, 10) };
+}
+
+function nombreDeLista(lista, id, femenino) {
+  const suelto = femenino ? 'desconocida' : 'desconocido';
+  if (!Number.isInteger(id) || id < 0 || id >= lista.length) {
+    return { id, nombre: id == null ? suelto : `${suelto} (${id})`, conocido: false, accion: '' };
+  }
+  const item = lista[id];
+  if (typeof item === 'string') return { id, nombre: item, conocido: true, accion: '' };
+  return { id, nombre: item.nombre, accion: item.accion, conocido: true };
+}
+
+// Un campo ausente es 0, igual que el resto de las estadísticas. Uno presente
+// que no es un entero, o que cae fuera de la lista, no se disfraza de la etapa 0.
+function idEnLista(texto, lista, advertencias, etiqueta, femenino) {
+  const suelto = femenino ? 'desconocida' : 'desconocido';
+  const leido = enteroLimpio(texto);
+  if (!leido.presente) return nombreDeLista(lista, 0, femenino);
+  if (leido.valor == null) {
+    advertencias.push(`El campo ${etiqueta} no es un número entero. Lo muestro como ${suelto}.`);
+    return { id: null, nombre: suelto, conocido: false, accion: '' };
+  }
+  const entrada = nombreDeLista(lista, leido.valor, femenino);
+  if (!entrada.conocido) {
+    advertencias.push(`El campo ${etiqueta} vale ${leido.valor} y no está en la lista del fuente. Lo muestro como ${suelto}.`);
+  }
+  return entrada;
+}
+
+function leerEtapaDragon(texto, version, advertencias) {
+  const leido = enteroLimpio(texto);
+  if (!leido.presente) return nombreDeLista(ETAPAS_DRAGON, 0, true);
+  if (leido.valor == null) {
+    advertencias.push('La etapa del dragón no es un número entero. La muestro como desconocida.');
+    return { id: null, nombre: 'desconocida', accion: '', conocido: false };
+  }
+  // LoadSave, versiones anteriores a 2.0041: si el índice es la penúltima
+  // etapa de la lista actual, el juego lo pasa a la última.
+  let id = leido.valor;
+  if (version < 2.0041 && id === ETAPAS_DRAGON.length - 2) {
+    id = ETAPAS_DRAGON.length - 1;
+    advertencias.push('Esta partida es anterior a la 2.0041 y guardó la penúltima etapa del dragón. Al cargar, el juego la pasa a la última.');
+  }
+  const etapa = nombreDeLista(ETAPAS_DRAGON, id, true);
+  if (!etapa.conocido) {
+    advertencias.push(`La etapa del dragón ${id} no está en las ${ETAPAS_DRAGON.length} del fuente. La muestro como desconocida.`);
+  }
+  return etapa;
+}
+
+function leerVolumen(texto, advertencias, etiqueta) {
+  const leido = enteroLimpio(texto);
+  if (!leido.presente) return 0;
+  if (leido.valor == null) {
+    advertencias.push(`El ${etiqueta} no es un número entero. Lo dejé en cero.`);
+    return 0;
+  }
+  if (leido.valor < 0 || leido.valor > 100) {
+    advertencias.push(`El ${etiqueta} está fuera de 0 a 100, que es el rango del deslizador. Lo muestro igual.`);
+  }
+  return leido.valor;
+}
+
+function leerConteo(texto, advertencias, etiqueta) {
+  const valor = numero(texto, true);
+  if (valor < 0) advertencias.push(`La cantidad de ${etiqueta} es negativa. La muestro igual.`);
+  else if (valor > TOPE_CONTEO) advertencias.push(`La cantidad de ${etiqueta} es desmedida. La muestro igual.`);
+  return valor;
+}
+
+function leerGalletasCampo(texto, advertencias, etiqueta) {
+  const valor = numero(texto);
+  if (valor < 0) advertencias.push(`Las ${etiqueta} son negativas. Las muestro igual.`);
+  return valor;
+}
+
+function leerFotogramas(texto, advertencias, etiqueta) {
+  const valor = numero(texto, true);
+  if (valor < 0) {
+    advertencias.push(`El tiempo de ${etiqueta} es negativo. Lo muestro igual.`);
+  } else {
+    const segundos = Math.round(valor / 30);
+    if (!Number.isFinite(segundos) || segundos > 1e12) {
+      advertencias.push(`El tiempo de ${etiqueta} es desmedido. Lo muestro igual.`);
+    }
+  }
+  return valor;
+}
+
+function textoTiempo(fotogramas) {
+  if (fotogramas < 0) return 'un tiempo negativo';
+  return formatearFotogramas(fotogramas);
+}
+
+function leerBoveda(texto, advertencias) {
+  if (!texto) return { entradas: [], omitida: false, invalidas: 0 };
+  if (texto.length > MAX_LARGO_BOVEDA) {
+    advertencias.push('La bóveda trae un texto demasiado largo. No la desplegué.');
+    return { entradas: [], omitida: true, invalidas: 0 };
+  }
+  const partes = texto.split(',');
+  let ocupadas = 0;
+  for (let i = 0; i < partes.length; i += 1) {
+    if (partes[i].trim() !== '') ocupadas += 1;
+    if (ocupadas > MAX_ENTRADAS_BOVEDA) {
+      advertencias.push('La bóveda trae demasiadas entradas. No la desplegué.');
+      return { entradas: [], omitida: true, invalidas: 0 };
+    }
+  }
+  const entradas = [];
+  let invalidas = 0;
+  for (let i = 0; i < partes.length; i += 1) {
+    const token = partes[i].trim();
+    if (token === '') continue;
+    if (!/^\d{1,6}$/.test(token)) {
+      invalidas += 1;
+      continue;
+    }
+    const id = Number(token);
+    entradas.push({
+      id,
+      nombre: mejoras[id] || `Mejora desconocida #${id}`,
+    });
+  }
+  if (invalidas > 0) {
+    advertencias.push('La bóveda trae entradas que no son un id de mejora. No las muestro.');
+  }
+  return { entradas, omitida: false, invalidas };
+}
+
+function textoVacioBoveda(boveda) {
+  if (boveda?.omitida) return 'No armé la lista: hay demasiadas entradas.';
+  if ((boveda?.invalidas || 0) > 0 && (boveda?.entradas || []).length === 0) {
+    return 'No había un id de mejora para mostrar.';
+  }
+  return 'La bóveda no esconde mejoras.';
+}
+
 function seccionExcesiva(texto, largo, maxSeparadores) {
   if (!texto) return false;
   if (texto.length > largo) return true;
@@ -680,6 +830,26 @@ function decodificarPlano(texto) {
     advertencias.push('Hay campos de más al final de las estadísticas. Esta versión del lector no les pone nombre: quedan como desconocidos.');
   }
 
+  const santa = idEnLista(misc[18], NIVELES_SANTA, advertencias, 'de Papá Noel', false);
+  const leche = idEnLista(misc[7], LECHES, advertencias, 'de la leche', false);
+  const auraDragon = idEnLista(misc[36], AURAS, advertencias, 'del aura del dragón', true);
+  const auraDragon2 = idEnLista(misc[37], AURAS, advertencias, 'de la segunda aura', true);
+  const nivelDragon = leerEtapaDragon(misc[35], version, advertencias);
+  const boveda = leerBoveda(misc[47] || '', advertencias);
+  const promesas = leerConteo(misc[10], advertencias, 'promesas a las ancianas');
+  const promesaFotogramas = leerFotogramas(misc[11], advertencias, 'la promesa');
+  const galletasAbsorbidas = leerGalletasCampo(misc[16], advertencias, 'galletas absorbidas');
+  const devoradoresExplotados = leerConteo(misc[17], advertencias, 'devoradores explotados');
+  const renos = leerConteo(misc[19], advertencias, 'renos');
+  const devoradores = {
+    cantidad: leerConteo(misc[24], advertencias, 'devoradores con galletas'),
+    galletas: leerGalletasCampo(misc[23], advertencias, 'galletas en los devoradores'),
+    brillantes: leerConteo(misc[40], advertencias, 'devoradores brillantes'),
+    galletasBrillantes: leerGalletasCampo(misc[41], advertencias, 'galletas en los brillantes'),
+  };
+  const volumen = leerVolumen(misc[39], advertencias, 'volumen');
+  const volumenMusica = leerVolumen(misc[52], advertencias, 'volumen de la música');
+
   const datos = {
     version: versionTexto,
     versionNumero: version,
@@ -728,12 +898,22 @@ function decodificarPlano(texto) {
       bits: bitsLogros,
     },
     mejorasPermanentes: permanentes,
-    nivelDragon: numero(misc[35], true),
-    auraDragon: numero(misc[36], true),
-    auraDragon2: numero(misc[37], true),
+    promesas,
+    promesaFotogramas,
+    galletasAbsorbidas,
+    devoradoresExplotados,
+    santa,
+    renos,
+    devoradores,
+    nivelDragon,
+    auraDragon,
+    auraDragon2,
+    volumen,
+    volumenMusica,
+    leche,
+    boveda,
     heraldos: numero(misc[48], true),
     fondoId: numero(misc[6], true),
-    lecheId: numero(misc[7], true),
     iraAnciana: numero(misc[9], true),
     cpsMaximo: numero(misc[51]),
     apariencia,
@@ -777,6 +957,7 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
       { etiqueta: 'Galletas hechas a mano', numero: datos.galletasHechasAMano },
       { etiqueta: 'Galletas doradas', numero: datos.galletasDoradas, detalle: `${formatear(datos.galletasDoradasAscension)} en esta ascensión.` },
       { etiqueta: 'Temporada', texto: datos.temporada.nombre, detalle: temporadaDetalle },
+      { etiqueta: 'Leche', texto: datos.leche.nombre, detalle: datos.leche.id == null ? 'El save no trae un id de la lista.' : `Id ${formatear(datos.leche.id)} de Game.AllMilks.` },
       { etiqueta: 'Terrones de azúcar', numero: datos.terrones, detalle: `${formatear(datos.terronesTotales)} cosechados en total. El que está creciendo es ${datos.tipoTerron.nombre}.` },
       { etiqueta: 'Edificios en total', numero: datos.edificiosTotal },
     ],
@@ -836,7 +1017,9 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
       { etiqueta: 'Pepitas gastadas', numero: datos.chipsCelestialesGastados },
       { etiqueta: 'Ascensiones', numero: datos.ascensiones },
       { etiqueta: 'Modo de la ascensión', texto: datos.modoAscension.nombre },
-      { etiqueta: 'Nivel del dragón', numero: datos.nivelDragon, detalle: 'Es el índice de etapa. El nombre de cada etapa no lo mostramos.' },
+      { etiqueta: 'Dragón', texto: datos.nivelDragon.nombre, detalle: detalleDragon(datos.nivelDragon) },
+      { etiqueta: 'Aura del dragón', texto: datos.auraDragon.nombre, detalle: detalleAura(datos.auraDragon) },
+      { etiqueta: 'Segunda aura', texto: datos.auraDragon2.nombre, detalle: detalleAura(datos.auraDragon2, datos.nivelDragon.id) },
       { etiqueta: 'Heraldos al guardar', numero: datos.heraldos },
       { etiqueta: 'Mejoras permanentes', texto: permanentes },
     ],
@@ -859,6 +1042,39 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
     })),
   ];
 
+  const panelEspeciales = {
+    id: 'promesa',
+    tipo: 'tarjetas',
+    titulo: 'Promesa, Papá Noel y devoradores',
+    nota: 'La promesa, Papá Noel, los renos y los devoradores se ponen en cero al reencarnar. Los volúmenes no: son los deslizadores, de 0 a 100. La música solo muestra el suyo en la versión de escritorio, pero el campo viaja igual.',
+    items: [
+      { etiqueta: 'Promesas a las ancianas', numero: datos.promesas, detalle: 'Veces que se compró la mejora Promesa a las ancianas, en esta ascensión. No es el Pacto de anciana.' },
+      { etiqueta: 'Tiempo de promesa', texto: textoTiempo(datos.promesaFotogramas), detalle: `${formatear(datos.promesaFotogramas)} fotogramas, a 30 por segundo.` },
+      { etiqueta: 'Papá Noel', texto: datos.santa.nombre, detalle: datos.santa.id == null ? 'El save no trae un índice de etapa.' : `Etapa ${formatear(datos.santa.id)} de 0 a ${NIVELES_SANTA.length - 1}.` },
+      { etiqueta: 'Renos', numero: datos.renos, detalle: 'Los que se clickearon en esta ascensión. El save no guarda el nombre de cada uno.' },
+      { etiqueta: 'Galletas absorbidas', numero: datos.galletasAbsorbidas, detalle: 'Las que se llevaron los devoradores en esta ascensión.' },
+      { etiqueta: 'Devoradores explotados', numero: datos.devoradoresExplotados, detalle: 'En esta ascensión.' },
+      { etiqueta: 'Devoradores con galletas', numero: datos.devoradores.cantidad, detalle: 'Los que tenían galletas al guardar, brillantes incluidos.' },
+      { etiqueta: 'Galletas en devoradores', numero: datos.devoradores.galletas, detalle: 'Las de los que no son brillantes.' },
+      { etiqueta: 'Devoradores brillantes', numero: datos.devoradores.brillantes, detalle: 'Cuántos de los que tenían galletas son brillantes.' },
+      { etiqueta: 'Galletas en brillantes', numero: datos.devoradores.galletasBrillantes },
+      { etiqueta: 'Volumen', texto: `${formatear(datos.volumen)} %`, detalle: 'El deslizador va de 0 a 100.' },
+      { etiqueta: 'Volumen de la música', texto: `${formatear(datos.volumenMusica)} %`, detalle: 'En la loc, Volumen (música). El deslizador está en la versión de escritorio.' },
+    ],
+  };
+
+  const panelBoveda = {
+    id: 'boveda',
+    tipo: 'lista',
+    titulo: 'Bóveda',
+    nota: 'Mejoras escondidas. El save guarda los ids separados por coma. El nombre sale del mismo catálogo que el resto de las mejoras.',
+    vacio: textoVacioBoveda(datos.boveda),
+    items: (datos.boveda.entradas || []).map((entrada) => ({
+      titulo: entrada.nombre,
+      marca: `#${entrada.id}`,
+    })),
+  };
+
   const panelMods = {
     id: 'mods',
     tipo: 'lista',
@@ -868,7 +1084,20 @@ export function armarPaneles(datos, formatear = (valor) => String(valor)) {
     items: itemsMods,
   };
 
-  return [resumen, panelEdificios, ...panelesMinijuegos(datos.minijuegos, formatear), panelProgreso, panelPrestigio, panelMods];
+  return [resumen, panelEdificios, ...panelesMinijuegos(datos.minijuegos, formatear), panelProgreso, panelPrestigio, panelEspeciales, panelBoveda, panelMods];
+}
+
+function detalleDragon(dragon) {
+  const indice = dragon.id == null ? 'Sin índice.' : `Índice ${dragon.id}.`;
+  if (!dragon.accion) return indice;
+  return `${dragon.accion} ${indice}`;
+}
+
+function detalleAura(aura, nivelDragon) {
+  const id = aura.id == null ? 'Sin id.' : `Id ${aura.id}.`;
+  if (nivelDragon == null) return id;
+  if (nivelDragon >= ETAPA_AURA_SECUNDARIA) return `${id} La segunda ranura se abre en la etapa ${ETAPA_AURA_SECUNDARIA}.`;
+  return `${id} El fuente muestra la segunda ranura desde la etapa ${ETAPA_AURA_SECUNDARIA}. El save igual guarda el número.`;
 }
 
 function minijuegoDe(datos, indice) {
@@ -928,10 +1157,11 @@ const NOTAS_COOKIE = [
   'El catálogo del lector puede tener nombres que este save no guarda, porque se agregaron en una versión posterior. Esos no figuran como faltantes: el bitfield no los trae.',
   'Las opciones del menú (partículas, sonido, pantalla) viajan en el save y este lector no las lista.',
   'El jardín, la bolsa, el panteón y el grimorio se leen del quinto campo del edificio, con la forma que escribe el fuente del juego. Si el texto no coincide, queda sin interpretar.',
-  'El fondo, el tipo de leche y las auras del dragón son ids numéricos. El nombre del sprite no está en el save.',
-  'El nivel del dragón es el índice de etapa. El título de cada etapa no está en el save.',
+  'El fondo queda entre los ids numéricos. El dibujo de cada sprite no está en el save.',
+  'La leche, las auras y la etapa del dragón usan el nombre de la loc oficial. Si el id no está en esa lista, queda como desconocido. Varias etapas del dragón comparten título: las separa el índice y la acción.',
   'La apariencia de Tú son índices de genes. El nombre visual de cada opción no está en el save.',
-  'La bóveda (mejoras escondidas) viaja como una lista de ids y este lector no la despliega.',
+  'La bóveda es la lista de mejoras escondidas. Cada id usa el mismo catálogo que las mejoras. Si no está en la lista, el nombre dice desconocida y conserva el número.',
+  'La promesa a las ancianas es Game.pledges, la mejora Promesa a las ancianas. No es el Pacto de anciana.',
   'Lo que venga después del campo de estadísticas 54 queda en Ids y campos sin nombre, con el texto crudo.',
   'El prestigio que se muestra es el guardado. Al importar, el juego lo vuelve a calcular con las galletas entregadas, así que puede diferir del número de acá.',
   'Las horneadas en total son la suma de las de esta ascensión y las entregadas al ascender. El juego las muestra así. No es un campo propio del save.',
@@ -1008,6 +1238,7 @@ export function armarExportacion(datos) {
           campo('Tiempo de temporada', temporada.fotogramas, 'entero', 'Fotogramas que quedaban, a 30 por segundo.'),
           campo('Tiempo de temporada, legible', formatearFotogramas(temporada.fotogramas), 'texto', 'Los mismos fotogramas, pasados a tiempo.'),
           campo('Veces que se cambió la temporada', temporada.usos, 'entero', 'Usos del cambiador de temporada.'),
+          campo('Leche', datos.leche?.nombre, 'texto', datos.leche?.id == null ? 'El campo no es un id de la lista.' : `Id ${datos.leche?.id} de Game.AllMilks.`),
           campo('Terrones de azúcar', datos.terrones, 'entero', 'Los que había en el banco. -1 si todavía no se desbloquean.'),
           campo('Terrones cosechados', datos.terronesTotales, 'entero'),
           campo('Terrón en curso', datos.tipoTerron?.nombre, 'texto', `Id ${datos.tipoTerron?.id ?? ''}.`),
@@ -1100,7 +1331,9 @@ export function armarExportacion(datos) {
           campo('Galletas celestiales', datos.galletasCelestiales, 'numero', 'Campo viejo. Queda por si el save lo trae.'),
           campo('Ascensiones', datos.ascensiones, 'entero'),
           campo('Modo de la ascensión', datos.modoAscension?.nombre, 'texto', `Id ${datos.modoAscension?.id ?? ''}.`),
-          campo('Nivel del dragón', datos.nivelDragon, 'entero', 'Índice de etapa. El título de la etapa no está en el save.'),
+          campo('Dragón', datos.nivelDragon?.nombre, 'texto', detalleDragon(datos.nivelDragon || {})),
+          campo('Aura del dragón', datos.auraDragon?.nombre, 'texto', detalleAura(datos.auraDragon || {})),
+          campo('Segunda aura del dragón', datos.auraDragon2?.nombre, 'texto', detalleAura(datos.auraDragon2 || {}, datos.nivelDragon?.id)),
           campo('Heraldos al guardar', datos.heraldos, 'entero', 'Al cargar, el juego pone los heraldos de ahora, no estos.'),
         ],
         tabla: {
@@ -1113,6 +1346,47 @@ export function armarExportacion(datos) {
             ranura: ranura.ranura,
             id: ranura.id,
             nombre: ranura.nombre,
+          })),
+        },
+      },
+      {
+        id: 'promesa',
+        titulo: 'Promesa, Papá Noel y devoradores',
+        nota: 'La promesa, Papá Noel, los renos y los devoradores se ponen en cero al reencarnar. Los volúmenes son los deslizadores, de 0 a 100. Si el campo viene vacío, acá figura 0: al cargar, el juego trata el 0 del volumen como ausente y pone 75, y el de la música en 50.',
+        campos: [
+          campo('Promesas a las ancianas', datos.promesas, 'entero', 'Game.pledges. Veces que se compró Promesa a las ancianas en esta ascensión.'),
+          campo('Tiempo de promesa', datos.promesaFotogramas, 'entero', 'Fotogramas que quedaban, a 30 por segundo.'),
+          campo('Tiempo de promesa, legible', textoTiempo(datos.promesaFotogramas), 'texto', 'Los mismos fotogramas, pasados a tiempo.'),
+          campo('Papá Noel', datos.santa?.nombre, 'texto', datos.santa?.id == null ? 'Sin índice.' : `Etapa ${datos.santa.id} de 0 a ${NIVELES_SANTA.length - 1}.`),
+          campo('Renos', datos.renos, 'entero', 'Clickeados en esta ascensión. El save no guarda el nombre de cada uno.'),
+          campo('Galletas absorbidas', datos.galletasAbsorbidas, 'numero', 'Las que se llevaron los devoradores en esta ascensión.'),
+          campo('Devoradores explotados', datos.devoradoresExplotados, 'entero', 'En esta ascensión.'),
+          campo('Devoradores con galletas', datos.devoradores?.cantidad, 'entero', 'SaveWrinklers().number. Cuenta también a los brillantes.'),
+          campo('Galletas en devoradores', datos.devoradores?.galletas, 'numero', 'SaveWrinklers().amount. Solo los que no son brillantes.'),
+          campo('Devoradores brillantes', datos.devoradores?.brillantes, 'entero', 'SaveWrinklers().shinies.'),
+          campo('Galletas en brillantes', datos.devoradores?.galletasBrillantes, 'numero', 'SaveWrinklers().amountShinies.'),
+          campo('Volumen', datos.volumen, 'entero', 'Porcentaje del deslizador, de 0 a 100.'),
+          campo('Volumen de la música', datos.volumenMusica, 'entero', 'Porcentaje. El deslizador está en la versión de escritorio.'),
+        ],
+      },
+      {
+        id: 'boveda',
+        titulo: 'Bóveda',
+        nota: datos.boveda?.omitida
+          ? 'El texto era demasiado largo o traía demasiadas entradas. No se desplegó.'
+          : 'Ids de mejoras escondidas, en el orden del save. Un id que no está en el catálogo queda como desconocido.',
+        campos: [
+          campo('Escondidas', datos.boveda?.entradas?.length || 0, 'entero', datos.boveda?.omitida ? 'No se desplegó.' : 'Las que tenían un id numérico.'),
+          campo('Entradas ignoradas', datos.boveda?.invalidas || 0, 'entero', 'Texto que no era un id. No se muestra.'),
+        ],
+        tabla: {
+          columnas: [
+            { id: 'id', etiqueta: 'Id', tipo: 'entero' },
+            { id: 'nombre', etiqueta: 'Nombre', tipo: 'texto' },
+          ],
+          filas: (datos.boveda?.entradas || []).map((entrada) => ({
+            id: entrada.id,
+            nombre: entrada.nombre,
           })),
         },
       },
@@ -1167,9 +1441,6 @@ export function armarExportacion(datos) {
         nota: 'Estos valores están en el save. El lector no les asigna un nombre visual: un nombre inventado cerraría peor que el id.',
         campos: [
           campo('Fondo', datos.fondoId, 'entero', 'Id de sprite. El dibujo no está mapeado.'),
-          campo('Leche', datos.lecheId, 'entero', 'Id de tipo de leche. El dibujo no está mapeado.'),
-          campo('Aura del dragón', datos.auraDragon, 'entero', 'Id de aura. El nombre no está mapeado.'),
-          campo('Segunda aura del dragón', datos.auraDragon2, 'entero', 'Id de la segunda aura. El nombre no está mapeado.'),
           ...extras,
         ],
         tabla: {
