@@ -15,7 +15,7 @@ Qué quedó:
 
 `node --test` sigue en verde. La página pasó de 183 KB a 207 KB (64 KB gzip). El fixture se decodifica en 0,88 ms. Los paneles nuevos no mueven el frame.
 
-PR: pendiente
+PR: https://github.com/Elluis1/savedeco/pull/11
 
 Próximos pasos: lo que el formato nombra y esta pasada no tocó (investigación, sonido de la galleta dorada, fechas del terrón, fortunas, galletas regaladas). Después, el lector de Kittens Game. El de Terraria sigue esperando el camino de bytes.
 
